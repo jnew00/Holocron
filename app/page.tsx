@@ -7,7 +7,10 @@ import { LockedScreen } from "@/components/security/LockedScreen";
 import { LockButton } from "@/components/security/LockButton";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { TemplateSelector } from "@/components/templates/TemplateSelector";
+import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { NoteTemplate } from "@/lib/templates/templates";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Kanban } from "lucide-react";
 
 export default function Home() {
   const { isUnlocked, dirHandle } = useRepo();
@@ -35,40 +38,51 @@ export default function Home() {
 
   return (
     <main className="min-h-screen p-6">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">LocalNote</h1>
             <p className="text-muted-foreground">
-              Your encrypted notes are ready
+              Your encrypted notes and tasks
             </p>
           </div>
-          <div className="flex gap-2">
-            <LockButton />
-            <TemplateSelector onSelectTemplate={handleTemplateSelect} />
-          </div>
+          <LockButton />
         </div>
 
-        <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">{currentNote}</h2>
-            <div className="flex gap-2 text-xs text-muted-foreground">
-              <span>Auto-saved</span>
+        <Tabs defaultValue="notes" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="notes" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value="kanban" className="flex items-center gap-2">
+              <Kanban className="h-4 w-4" />
+              Kanban
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="notes" className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold">{currentNote}</h2>
+              <TemplateSelector onSelectTemplate={handleTemplateSelect} />
             </div>
-          </div>
-          <TiptapEditor
-            content={markdown}
-            onChange={setMarkdown}
-            placeholder="Start writing your note..."
-          />
-        </div>
+            <TiptapEditor
+              content={markdown}
+              onChange={setMarkdown}
+              placeholder="Start writing your note..."
+            />
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="text-sm font-semibold mb-2">Markdown Output:</h3>
+              <pre className="text-xs overflow-auto max-h-40">
+                {markdown}
+              </pre>
+            </div>
+          </TabsContent>
 
-        <div className="mt-8 p-4 bg-muted rounded-lg">
-          <h3 className="text-sm font-semibold mb-2">Markdown Output:</h3>
-          <pre className="text-xs overflow-auto max-h-40">
-            {markdown}
-          </pre>
-        </div>
+          <TabsContent value="kanban">
+            <KanbanBoard />
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );

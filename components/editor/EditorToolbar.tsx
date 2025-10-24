@@ -7,6 +7,7 @@ import {
   Italic,
   Strikethrough,
   Code,
+  FileCode,
   Heading1,
   Heading2,
   Heading3,
@@ -17,6 +18,13 @@ import {
   Redo,
   ListTodo,
   Minus,
+  Underline as UnderlineIcon,
+  Highlighter,
+  Link as LinkIcon,
+  Table,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from "lucide-react";
 
 interface EditorToolbarProps {
@@ -103,6 +111,27 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
         >
           <Code className="h-4 w-4" />
         </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          active={editor.isActive("codeBlock")}
+          title="Code Block"
+        >
+          <FileCode className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleUnderline().run()}
+          active={editor.isActive("underline")}
+          title="Underline"
+        >
+          <UnderlineIcon className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().toggleHighlight().run()}
+          active={editor.isActive("highlight")}
+          title="Highlight"
+        >
+          <Highlighter className="h-4 w-4" />
+        </ToolbarButton>
       </div>
 
       <div className="w-px h-6 bg-border mx-1" />
@@ -172,6 +201,57 @@ export function EditorToolbar({ editor }: EditorToolbarProps) {
           title="Horizontal Rule"
         >
           <Minus className="h-4 w-4" />
+        </ToolbarButton>
+      </div>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
+      <div className="flex gap-1">
+        <ToolbarButton
+          onClick={() => {
+            const url = window.prompt("Enter URL:");
+            if (url) {
+              editor.chain().focus().setLink({ href: url }).run();
+            }
+          }}
+          active={editor.isActive("link")}
+          title="Link"
+        >
+          <LinkIcon className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() =>
+            editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+          }
+          title="Insert Table"
+        >
+          <Table className="h-4 w-4" />
+        </ToolbarButton>
+      </div>
+
+      <div className="w-px h-6 bg-border mx-1" />
+
+      <div className="flex gap-1">
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign("left").run()}
+          active={editor.isActive({ textAlign: "left" })}
+          title="Align Left"
+        >
+          <AlignLeft className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign("center").run()}
+          active={editor.isActive({ textAlign: "center" })}
+          title="Align Center"
+        >
+          <AlignCenter className="h-4 w-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          onClick={() => editor.chain().focus().setTextAlign("right").run()}
+          active={editor.isActive({ textAlign: "right" })}
+          title="Align Right"
+        >
+          <AlignRight className="h-4 w-4" />
         </ToolbarButton>
       </div>
     </div>

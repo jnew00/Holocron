@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { RepoProvider } from "@/contexts/RepoContext";
+import { SettingsProvider } from "@/contexts/SettingsContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,7 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <RepoProvider>{children}</RepoProvider>
+        <SettingsProvider>
+          <RepoProvider>{children}</RepoProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

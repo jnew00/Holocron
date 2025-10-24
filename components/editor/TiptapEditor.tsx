@@ -1,14 +1,28 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Typography from "@tiptap/extension-typography";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
-import { useEffect } from "react";
-import { jsonToMarkdown, markdownToJson } from "@/lib/markdown/converter";
+import { CodeBlockLowlight } from "@tiptap/extension-code-block-lowlight";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { Highlight } from "@tiptap/extension-highlight";
+import { Underline } from "@tiptap/extension-underline";
+import { TextAlign } from "@tiptap/extension-text-align";
+import { Link } from "@tiptap/extension-link";
+import { Markdown } from "tiptap-markdown";
+import { all, createLowlight } from "lowlight";
+import { useEffect, useRef } from "react";
 import { EditorToolbar } from "./EditorToolbar";
+import { CodeBlockComponent } from "./CodeBlockComponent";
+
+// Create a lowlight instance with all languages
+const lowlight = createLowlight(all);
 
 interface TiptapEditorProps {
   content?: string;
@@ -30,11 +44,15 @@ export function TiptapEditor({
         heading: {
           levels: [1, 2, 3, 4, 5, 6],
         },
-        codeBlock: {
-          HTMLAttributes: {
-            class: "bg-muted p-4 rounded-lg font-mono text-sm",
-          },
+        // Disable default codeBlock, we'll use CodeBlockLowlight instead
+        codeBlock: false,
+      }),
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockComponent);
         },
+      }).configure({
+        lowlight,
       }),
       Placeholder.configure({
         placeholder,
@@ -51,6 +69,43 @@ export function TiptapEditor({
           class: "task-item",
         },
       }),
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: "border-collapse table-auto w-full",
+        },
+      }),
+      TableRow,
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: "border border-border bg-muted font-bold p-2",
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: "border border-border p-2",
+        },
+      }),
+      Highlight.configure({
+        HTMLAttributes: {
+          class: "bg-yellow-200 dark:bg-yellow-800",
+        },
+      }),
+      Underline,
+      TextAlign.configure({
+        types: ["heading", "paragraph"],
+      }),
+      Link.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: "text-primary underline cursor-pointer",
+        },
+      }),
+      Markdown.configure({
+        html: true,
+        transformPastedText: true,
+        transformCopiedText: true,
+      }),
     ],
     editorProps: {
       attributes: {
@@ -58,12 +113,13 @@ export function TiptapEditor({
           "prose prose-sm sm:prose lg:prose-lg xl:prose-xl dark:prose-invert max-w-none focus:outline-none min-h-[400px] p-4",
       },
     },
-    content: content ? markdownToJson(content) : undefined,
+    content,
     editable,
     onUpdate: ({ editor }) => {
       if (onChange) {
-        const json = editor.getJSON();
-        const markdown = jsonToMarkdown(json);
+        // Get markdown from the editor using the extension's serializer
+        const storage = editor.storage as any;
+        const markdown = storage.markdown?.getMarkdown?.() || "";
         onChange(markdown);
       }
     },
@@ -72,9 +128,10 @@ export function TiptapEditor({
   // Update editor content when prop changes
   useEffect(() => {
     if (editor && content !== undefined) {
-      const currentMarkdown = jsonToMarkdown(editor.getJSON());
+      const storage = editor.storage as any;
+      const currentMarkdown = storage.markdown?.getMarkdown?.() || "";
       if (currentMarkdown.trim() !== content.trim()) {
-        editor.commands.setContent(markdownToJson(content));
+        editor.commands.setContent(content);
       }
     }
   }, [content, editor]);

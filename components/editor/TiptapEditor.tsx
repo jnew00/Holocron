@@ -24,6 +24,7 @@ export function TiptapEditor({
   editable = true,
 }: TiptapEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         heading: {

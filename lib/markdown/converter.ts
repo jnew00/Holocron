@@ -238,11 +238,13 @@ export function markdownToJson(markdown: string): JSONContent {
       continue;
     }
 
-    // Task list item
+    // Task list item - needs to be wrapped in taskList
     const taskMatch = line.match(/^(\s*)-\s+\[([x ])\]\s+(.+)$/i);
     if (taskMatch) {
       flushParagraph();
-      content.push({
+      // Check if previous item is a taskList, if so append to it
+      const lastItem = content[content.length - 1];
+      const taskItem = {
         type: "taskItem",
         attrs: { checked: taskMatch[2].toLowerCase() === "x" },
         content: [
@@ -251,15 +253,25 @@ export function markdownToJson(markdown: string): JSONContent {
             content: parseInlineContent(taskMatch[3]),
           },
         ],
-      });
+      };
+
+      if (lastItem && lastItem.type === "taskList") {
+        lastItem.content?.push(taskItem);
+      } else {
+        content.push({
+          type: "taskList",
+          content: [taskItem],
+        });
+      }
       continue;
     }
 
-    // Bullet list item
+    // Bullet list item - needs to be wrapped in bulletList
     const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
     if (bulletMatch) {
       flushParagraph();
-      content.push({
+      const lastItem = content[content.length - 1];
+      const listItem = {
         type: "listItem",
         content: [
           {
@@ -267,15 +279,25 @@ export function markdownToJson(markdown: string): JSONContent {
             content: parseInlineContent(bulletMatch[2]),
           },
         ],
-      });
+      };
+
+      if (lastItem && lastItem.type === "bulletList") {
+        lastItem.content?.push(listItem);
+      } else {
+        content.push({
+          type: "bulletList",
+          content: [listItem],
+        });
+      }
       continue;
     }
 
-    // Ordered list item
+    // Ordered list item - needs to be wrapped in orderedList
     const orderedMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
     if (orderedMatch) {
       flushParagraph();
-      content.push({
+      const lastItem = content[content.length - 1];
+      const listItem = {
         type: "listItem",
         content: [
           {
@@ -283,7 +305,16 @@ export function markdownToJson(markdown: string): JSONContent {
             content: parseInlineContent(orderedMatch[2]),
           },
         ],
-      });
+      };
+
+      if (lastItem && lastItem.type === "orderedList") {
+        lastItem.content?.push(listItem);
+      } else {
+        content.push({
+          type: "orderedList",
+          content: [listItem],
+        });
+      }
       continue;
     }
 

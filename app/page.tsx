@@ -4,12 +4,18 @@ import { useState } from "react";
 import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
-import { Button } from "@/components/ui/button";
-import { FileText } from "lucide-react";
+import { TemplateSelector } from "@/components/templates/TemplateSelector";
+import { NoteTemplate } from "@/lib/templates/templates";
 
 export default function Home() {
   const { isUnlocked } = useRepo();
   const [markdown, setMarkdown] = useState("# Welcome to LocalNote\n\nStart typing your notes here...\n\n- [ ] Try the task list feature\n- [x] Explore the editor\n\n");
+  const [currentNote, setCurrentNote] = useState<string>("Welcome");
+
+  const handleTemplateSelect = (template: NoteTemplate) => {
+    setMarkdown(template.content);
+    setCurrentNote(template.name);
+  };
 
   if (!isUnlocked) {
     return (
@@ -29,14 +35,16 @@ export default function Home() {
               Your encrypted notes are ready
             </p>
           </div>
-          <Button variant="outline">
-            <FileText className="mr-2 h-4 w-4" />
-            New Note
-          </Button>
+          <TemplateSelector onSelectTemplate={handleTemplateSelect} />
         </div>
 
         <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Editor Demo</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">{currentNote}</h2>
+            <div className="flex gap-2 text-xs text-muted-foreground">
+              <span>Auto-saved</span>
+            </div>
+          </div>
           <TiptapEditor
             content={markdown}
             onChange={setMarkdown}

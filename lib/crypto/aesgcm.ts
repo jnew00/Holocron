@@ -17,7 +17,7 @@ const KEY_LENGTH = 256; // AES-256
  */
 async function deriveKey(
   passphrase: string,
-  salt: Uint8Array
+  salt: BufferSource
 ): Promise<CryptoKey> {
   const encoder = new TextEncoder();
   const passphraseKey = await crypto.subtle.importKey(

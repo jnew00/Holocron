@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
+import { LockedScreen } from "@/components/security/LockedScreen";
+import { LockButton } from "@/components/security/LockButton";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { TemplateSelector } from "@/components/templates/TemplateSelector";
 import { NoteTemplate } from "@/lib/templates/templates";
 
 export default function Home() {
-  const { isUnlocked } = useRepo();
+  const { isUnlocked, dirHandle } = useRepo();
   const [markdown, setMarkdown] = useState("# Welcome to LocalNote\n\nStart typing your notes here...\n\n- [ ] Try the task list feature\n- [x] Explore the editor\n\n");
   const [currentNote, setCurrentNote] = useState<string>("Welcome");
 
@@ -17,12 +19,18 @@ export default function Home() {
     setCurrentNote(template.name);
   };
 
-  if (!isUnlocked) {
+  // Show setup wizard if no repo is selected
+  if (!dirHandle) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <SetupWizard />
       </main>
     );
+  }
+
+  // Show locked screen if repo exists but is locked
+  if (!isUnlocked) {
+    return <LockedScreen />;
   }
 
   return (
@@ -35,7 +43,10 @@ export default function Home() {
               Your encrypted notes are ready
             </p>
           </div>
-          <TemplateSelector onSelectTemplate={handleTemplateSelect} />
+          <div className="flex gap-2">
+            <LockButton />
+            <TemplateSelector onSelectTemplate={handleTemplateSelect} />
+          </div>
         </div>
 
         <div className="mb-6">

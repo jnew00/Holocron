@@ -8,6 +8,31 @@
 
 ---
 
+## ⚡ Quick Start Commands
+
+```bash
+# Development (Turbopack - ultra-fast hot reload, no PWA)
+pnpm dev                  # → http://localhost:3000
+
+# Production (Full PWA support with service worker)
+pnpm build               # Build optimized bundle + generate service worker
+pnpm start               # → http://localhost:3000 (install as PWA here!)
+
+# Testing
+pnpm test                # Run all tests
+pnpm test --watch        # Watch mode for TDD
+
+# Clean build (if issues occur)
+rm -rf .next && pnpm build
+```
+
+**Key Points:**
+- 🚀 **Dev mode** (`pnpm dev`) = Fast development with Turbopack, NO PWA
+- 📱 **Production mode** (`pnpm build` + `pnpm start`) = Full PWA with offline support
+- ⚠️ **PWA install only works in production mode** - you must build first!
+
+---
+
 ## 📜 The Lore
 
 In the Star Wars universe, a **holocron** is a sophisticated information storage device used by both the Jedi Order and the Sith to preserve knowledge, teachings, and secrets. These ancient artifacts could only be opened by those strong in the Force, ensuring that the wisdom within remained protected.
@@ -126,7 +151,7 @@ pnpm install
 
 ### Development Mode
 
-Perfect for local use and development:
+Perfect for local use and development with **Turbopack** (5-10x faster than webpack):
 
 ```bash
 pnpm dev
@@ -138,17 +163,18 @@ http://localhost:3000
 ```
 
 **What happens in dev mode:**
-- Hot reloading enabled
+- **Turbopack bundler** - Ultra-fast hot reloading
 - PWA features disabled (for faster iteration)
 - Full development tools available
 - Service workers not active
+- 5-10x faster Fast Refresh compared to webpack
 
 ### Production Mode
 
-For the full experience with optimizations:
+For the full experience with optimizations and PWA support:
 
 ```bash
-# Build the application
+# Build the application (creates optimized bundle + service worker)
 pnpm build
 
 # Start the production server
@@ -161,10 +187,11 @@ http://localhost:3000
 ```
 
 **What happens in production:**
-- Optimized bundle sizes
-- PWA features enabled
-- Service worker active
-- Aggressive caching
+- Optimized bundle sizes with Turbopack
+- **PWA features enabled** - Service worker active
+- Aggressive caching for offline support
+- App ready to be installed on any device
+- Full encryption and security features active
 
 ---
 
@@ -513,11 +540,12 @@ Test coverage includes:
 
 - **Framework**: Next.js 16 (React 19)
 - **Language**: TypeScript (strict mode)
+- **Bundler**: Turbopack (default, 5-10x faster than webpack)
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Editor**: Tiptap (ProseMirror-based)
 - **Git**: isomorphic-git
-- **PWA**: @ducanh2912/next-pwa
-- **Build**: Webpack (required for PWA)
+- **PWA**: @serwist/next (Workbox successor, Turbopack-compatible)
+- **Service Worker**: Serwist 9.x
 
 ### Development Workflow
 
@@ -621,10 +649,12 @@ Please follow the coding standards in `CLAUDE.md`.
 **Problem**: Install button doesn't appear in browser
 
 **Solutions**:
-- Make sure you're running in production mode (`pnpm build && pnpm start`)
-- PWA is disabled in development mode by design
+- **CRITICAL**: Run in production mode: `pnpm build && pnpm start`
+- PWA is disabled in development mode (`pnpm dev`) by design
+- Service worker only generated during `pnpm build`
 - Use HTTPS or localhost (required for PWA)
 - Try Chrome/Edge (best PWA support)
+- Clear browser cache and rebuild: `rm -rf .next && pnpm build`
 
 ### Git Operations Failing
 

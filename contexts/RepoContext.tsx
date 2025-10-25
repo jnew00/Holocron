@@ -1,34 +1,51 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
-import { LockManager } from "@/lib/security/lockManager";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 interface RepoContextType {
-  dirHandle: FileSystemDirectoryHandle | null;
   repoPath: string | null;
   isUnlocked: boolean;
   passphrase: string | null;
-  setRepo: (handle: FileSystemDirectoryHandle, passphrase: string, path?: string) => void;
+  setRepo: (path: string, passphrase: string) => void;
   setRepoPath: (path: string) => void;
   lock: () => void;
-  lockManager: LockManager | null;
 }
 
 const RepoContext = createContext<RepoContextType | undefined>(undefined);
 
 export function RepoProvider({ children }: { children: React.ReactNode }) {
-  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [repoPath, setRepoPathState] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const lockManagerRef = useRef<LockManager | null>(null);
 
-  // Load repo path from localStorage on mount
+  // Load repo path and passphrase from config on mount
   useEffect(() => {
-    const savedPath = localStorage.getItem("localnote-repo-path");
-    if (savedPath) {
+    const loadConfig = async () => {
+      const savedPath = localStorage.getItem("localnote-repo-path");
+      if (!savedPath) return;
+
       setRepoPathState(savedPath);
-    }
+
+      try {
+        // Try to load encrypted config
+        const response = await fetch(`/api/config/read?repoPath=${encodeURIComponent(savedPath)}`);
+
+        if (response.ok) {
+          const { config } = await response.json();
+
+          // Auto-unlock with stored passphrase
+          if (config.passphrase) {
+            setPassphrase(config.passphrase);
+            setIsUnlocked(true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load config:", error);
+        // If config fails to load, user will need to unlock manually
+      }
+    };
+
+    loadConfig();
   }, []);
 
   const setRepoPath = useCallback((path: string) => {
@@ -39,64 +56,24 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   const lock = useCallback(() => {
     setPassphrase(null);
     setIsUnlocked(false);
-    if (lockManagerRef.current) {
-      lockManagerRef.current.stop();
-    }
   }, []);
 
-  const setRepo = useCallback((handle: FileSystemDirectoryHandle, pass: string, path?: string) => {
-    setDirHandle(handle);
+  const setRepo = useCallback((path: string, pass: string) => {
     setPassphrase(pass);
     setIsUnlocked(true);
-
-    // Store repo path if provided (optional - only needed for Git operations)
-    if (path) {
-      setRepoPath(path);
-    }
-
-    // Initialize lock manager when repo is unlocked
-    if (!lockManagerRef.current) {
-      lockManagerRef.current = new LockManager({
-        autoLockTimeout: 15 * 60 * 1000, // 15 minutes
-        lockOnIdle: true,
-        warnBeforeLock: true,
-        warnTimeMs: 60000, // 1 minute warning
-      });
-    }
-
-    // Start monitoring for auto-lock
-    lockManagerRef.current.start(
-      () => {
-        // Warning callback - could show a toast/dialog
-        console.log("Warning: Auto-lock in 1 minute");
-      },
-      () => {
-        // Lock callback
-        lock();
-      }
-    );
-  }, [lock, setRepoPath]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (lockManagerRef.current) {
-        lockManagerRef.current.stop();
-      }
-    };
-  }, []);
+    setRepoPath(path);
+    // Auto-lock removed - passphrase now persists in encrypted config
+  }, [setRepoPath]);
 
   return (
     <RepoContext.Provider
       value={{
-        dirHandle,
         repoPath,
         isUnlocked,
         passphrase,
         setRepo,
         setRepoPath,
         lock,
-        lockManager: lockManagerRef.current,
       }}
     >
       {children}

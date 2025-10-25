@@ -34,11 +34,13 @@ import {
   PanelLeftOpen,
   Maximize2,
   Minimize2,
+  CheckCircle2,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Home() {
-  const { isUnlocked, dirHandle, passphrase } = useRepo();
+  const { isUnlocked, repoPath, passphrase } = useRepo();
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [markdown, setMarkdown] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -47,9 +49,11 @@ export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  // DISABLED - Being migrated to server-side APIs
+  /*
   // Auto-save every 2 seconds when content changes
   useEffect(() => {
-    if (!currentNote || !dirHandle || !passphrase) return;
+    if (!currentNote || !repoPath || !passphrase) return;
 
     const timeoutId = setTimeout(async () => {
       if (markdown !== currentNote.content) {
@@ -58,10 +62,10 @@ export default function Home() {
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [markdown, currentNote, dirHandle, passphrase]);
+  }, [markdown, currentNote, repoPath, passphrase]);
 
   const handleNewNote = async () => {
-    if (!dirHandle || !passphrase) return;
+    if (!repoPath || !passphrase) return;
 
     const newNote: Note = {
       id: generateNoteId(),
@@ -238,9 +242,10 @@ export default function Home() {
       console.error("Failed to archive note:", error);
     }
   };
+  */
 
   // Show setup wizard if no repo is selected
-  if (!dirHandle) {
+  if (!repoPath || !isUnlocked) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <SetupWizard />
@@ -248,11 +253,104 @@ export default function Home() {
     );
   }
 
-  // Show locked screen if repo exists but is locked
-  if (!isUnlocked) {
-    return <LockedScreen />;
-  }
+  // TEMPORARY: Show message that editor is being migrated
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center p-6">
+      <div className="max-w-3xl w-full space-y-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-2">LocalNote - Passphrase System Working! 🎉</h1>
+          <p className="text-muted-foreground">The new architecture is in place and functional</p>
+        </div>
 
+        <div className="grid gap-4 md:grid-cols-2">
+          {/* Status Card */}
+          <div className="bg-card border rounded-lg p-6 space-y-3">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              System Status
+            </h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Repository:</span>
+                <span className="font-mono text-xs">{repoPath?.split('/').pop()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Unlocked:</span>
+                <span className="text-green-600">✓ Yes (Auto-loaded)</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Passphrase:</span>
+                <span className="text-green-600">✓ Encrypted & Stored</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Features Card */}
+          <div className="bg-card border rounded-lg p-6 space-y-3">
+            <h2 className="text-lg font-semibold">✅ Working Features</h2>
+            <ul className="text-sm space-y-2">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
+                <span>Native OS folder picker</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
+                <span>Passphrase encrypted & persisted</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
+                <span>Auto-unlock on startup</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5" />
+                <span>Git encryption/decryption ready</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Architecture Details */}
+        <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-6 space-y-3">
+          <h2 className="text-lg font-semibold">🔒 New Security Model</h2>
+          <div className="space-y-2 text-sm">
+            <p><strong>Local Storage:</strong> Notes stored as plaintext .md files (fast editing)</p>
+            <p><strong>Git Storage:</strong> Encrypted .md.enc files (secure in Bitbucket)</p>
+            <p><strong>Config Storage:</strong> Passphrase encrypted with machine-specific key in <code className="bg-muted px-1 rounded">.localnote/config.json.enc</code></p>
+            <p><strong>Multi-Directory:</strong> Each notes folder can have its own passphrase</p>
+            <p><strong>Git-Safe:</strong> Config can be committed - encrypted per-machine</p>
+          </div>
+        </div>
+
+        {/* Next Steps */}
+        <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-6 space-y-3">
+          <h2 className="text-lg font-semibold">⏳ Next: Editor Migration</h2>
+          <p className="text-sm">The note editor and file operations need to be migrated from FileSystemDirectoryHandle to server-side APIs. Core infrastructure is complete!</p>
+
+          <div className="pt-2">
+            <Button onClick={() => window.open('/settings', '_self')} variant="outline" className="mr-2">
+              <Settings className="h-4 w-4 mr-2" />
+              View Settings (Check Passphrase)
+            </Button>
+          </div>
+        </div>
+
+        {/* Debug Info */}
+        <div className="bg-muted/50 rounded-lg p-4">
+          <details className="text-xs">
+            <summary className="cursor-pointer font-semibold mb-2">Debug Info</summary>
+            <div className="space-y-1 font-mono">
+              <div>Repo Path: {repoPath}</div>
+              <div>Is Unlocked: {isUnlocked ? 'true' : 'false'}</div>
+              <div>Passphrase Length: {passphrase?.length || 0} chars</div>
+              <div>Config Location: {repoPath}/.localnote/config.json.enc</div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  );
+
+  // OLD CODE - needs to be migrated to use repoPath instead of dirHandle
   return (
     <div className={`flex flex-col h-screen ${isFullscreen ? "fixed inset-0 z-50 bg-background" : ""}`}>
       {/* Global Header */}

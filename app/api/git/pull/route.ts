@@ -1,12 +1,42 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
+import * as fs from "fs/promises";
+import * as path from "path";
+import * as crypto from "crypto";
 
 const execAsync = promisify(exec);
 
+// Decrypt a file using AES-256-GCM
+async function decryptFile(encFilePath: string, passphrase: string): Promise<void> {
+  const encryptedData = await fs.readFile(encFilePath);
+
+  // Extract components: salt(32) + iv(16) + authTag(16) + encrypted
+  const salt = encryptedData.subarray(0, 32);
+  const iv = encryptedData.subarray(32, 48);
+  const authTag = encryptedData.subarray(48, 64);
+  const encrypted = encryptedData.subarray(64);
+
+  // Derive key from passphrase
+  const key = crypto.pbkdf2Sync(passphrase, salt, 100000, 32, "sha256");
+
+  // Decrypt
+  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+  decipher.setAuthTag(authTag);
+
+  const decrypted = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ]);
+
+  // Write decrypted file (remove .enc extension)
+  const outputPath = encFilePath.replace(/\.enc$/, "");
+  await fs.writeFile(outputPath, decrypted, "utf-8");
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { repoPath, remote = "origin", branch } = await request.json();
+    const { repoPath, remote = "origin", branch, passphrase } = await request.json();
 
     if (!repoPath) {
       return NextResponse.json(
@@ -47,6 +77,36 @@ export async function POST(request: NextRequest) {
         conflictedFiles: conflictFiles.trim().split("\n").filter(Boolean),
         output: stdout || stderr,
       });
+    }
+
+    // If passphrase provided, decrypt all pulled .md.enc files
+    if (passphrase) {
+      const notesPath = path.join(repoPath, "notes");
+
+      // Recursively find and decrypt all .md.enc files
+      async function decryptMarkdownFiles(dir: string): Promise<void> {
+        try {
+          const entries = await fs.readdir(dir, { withFileTypes: true });
+
+          for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+
+            if (entry.isDirectory()) {
+              await decryptMarkdownFiles(fullPath);
+            } else if (entry.isFile() && entry.name.endsWith(".md.enc")) {
+              try {
+                await decryptFile(fullPath, passphrase);
+              } catch (error) {
+                console.error(`Failed to decrypt ${fullPath}:`, error);
+              }
+            }
+          }
+        } catch (error) {
+          // Directory might not exist yet
+        }
+      }
+
+      await decryptMarkdownFiles(notesPath);
     }
 
     return NextResponse.json({

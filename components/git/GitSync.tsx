@@ -43,7 +43,7 @@ import {
 } from "@/lib/git/gitService";
 
 export function GitSync() {
-  const { dirHandle, repoPath } = useRepo();
+  const { repoPath, passphrase } = useRepo();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -108,6 +108,7 @@ export function GitSync() {
           name: authorName,
           email: authorEmail,
         },
+        passphrase: passphrase || undefined,
       });
 
       setSuccess("Changes committed successfully");
@@ -146,7 +147,7 @@ export function GitSync() {
     setSuccess(null);
 
     try {
-      const result = await pull(repoPath, remote);
+      const result = await pull(repoPath, remote, undefined, passphrase || undefined);
 
       if (result.hasConflicts) {
         setError(`Merge conflicts detected in ${result.conflictedFiles?.length || 0} files`);

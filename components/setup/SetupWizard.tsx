@@ -12,22 +12,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  requestDirectoryAccess,
-  initializeRepo,
-  isValidRepo,
-  validateRepoPassphrase,
-  updateLastUnlocked,
-} from "@/lib/fs/repo";
+// Server-side repo operations via API
 import { useRepo } from "@/contexts/RepoContext";
 import { Loader2, FolderOpen, Lock, CheckCircle2 } from "lucide-react";
 
 type WizardStep = "welcome" | "select-directory" | "create-passphrase" | "unlock" | "complete";
 
 export function SetupWizard() {
-  const { setRepo } = useRepo();
+  const { setRepo, setRepoPath } = useRepo();
   const [step, setStep] = useState<WizardStep>("welcome");
-  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [directoryPath, setDirectoryPath] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [confirmPassphrase, setConfirmPassphrase] = useState("");
   const [error, setError] = useState("");
@@ -39,14 +33,31 @@ export function SetupWizard() {
     setError("");
 
     try {
-      const handle = await requestDirectoryAccess();
-      setDirHandle(handle);
+      // Call server-side API to open native folder dialog
+      const response = await fetch("/api/fs/select-directory");
 
-      // Check if it's an existing repo
-      const isValid = await isValidRepo(handle);
-      setIsExistingRepo(isValid);
+      if (!response.ok) {
+        const data = await response.json();
+        if (data.cancelled) {
+          setError("Folder selection cancelled");
+          return;
+        }
+        throw new Error(data.error || "Failed to select directory");
+      }
 
-      if (isValid) {
+      const data = await response.json();
+      const path = data.path;
+      setDirectoryPath(path);
+
+      // Store the path for Git operations
+      setRepoPath(path);
+
+      // Check if it's an existing repo by checking for .localnote folder
+      const checkResponse = await fetch(`/api/fs/check-repo?path=${encodeURIComponent(path)}`);
+      const checkData = await checkResponse.json();
+      setIsExistingRepo(checkData.isValid);
+
+      if (checkData.isValid) {
         setStep("unlock");
       } else {
         setStep("create-passphrase");
@@ -59,7 +70,7 @@ export function SetupWizard() {
   };
 
   const handleCreateRepo = async () => {
-    if (!dirHandle) return;
+    if (!directoryPath) return;
 
     setError("");
 
@@ -77,8 +88,38 @@ export function SetupWizard() {
     setLoading(true);
 
     try {
-      await initializeRepo(dirHandle, passphrase);
-      setRepo(dirHandle, passphrase);
+      // Initialize repo via API
+      const initResponse = await fetch("/api/fs/init-repo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: directoryPath }),
+      });
+
+      if (!initResponse.ok) {
+        const data = await initResponse.json();
+        throw new Error(data.error || "Failed to initialize repository");
+      }
+
+      // Save encrypted config with passphrase
+      const configResponse = await fetch("/api/config/write", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repoPath: directoryPath,
+          config: {
+            version: "1.0",
+            passphrase: passphrase,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      });
+
+      if (!configResponse.ok) {
+        const data = await configResponse.json();
+        throw new Error(data.error || "Failed to save config");
+      }
+
+      setRepo(directoryPath, passphrase);
       setStep("complete");
     } catch (err) {
       setError("Failed to initialize repository: " + (err as Error).message);
@@ -88,22 +129,30 @@ export function SetupWizard() {
   };
 
   const handleUnlock = async () => {
-    if (!dirHandle) return;
+    if (!directoryPath) return;
 
     setError("");
     setLoading(true);
 
     try {
-      const isValid = await validateRepoPassphrase(dirHandle, passphrase);
+      // Validate passphrase by trying to read config
+      const configResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(directoryPath)}`);
 
-      if (!isValid) {
+      if (!configResponse.ok) {
+        const data = await configResponse.json();
+        throw new Error(data.error || "Failed to read config");
+      }
+
+      const { config } = await configResponse.json();
+
+      // Verify entered passphrase matches stored passphrase
+      if (passphrase !== config.passphrase) {
         setError("Invalid passphrase");
         setLoading(false);
         return;
       }
 
-      await updateLastUnlocked(dirHandle, passphrase);
-      setRepo(dirHandle, passphrase);
+      setRepo(directoryPath, passphrase);
       setStep("complete");
     } catch (err) {
       setError("Failed to unlock: " + (err as Error).message);
@@ -237,7 +286,7 @@ export function SetupWizard() {
             variant="outline"
             onClick={() => {
               setStep("select-directory");
-              setDirHandle(null);
+              setDirectoryPath(null);
             }}
           >
             Back
@@ -298,7 +347,7 @@ export function SetupWizard() {
             variant="outline"
             onClick={() => {
               setStep("select-directory");
-              setDirHandle(null);
+              setDirectoryPath(null);
               setPassphrase("");
             }}
           >

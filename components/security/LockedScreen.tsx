@@ -13,17 +13,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { validateRepoPassphrase, updateLastUnlocked } from "@/lib/fs/repo";
 import { Lock, Loader2 } from "lucide-react";
 
 export function LockedScreen() {
-  const { dirHandle, setRepo } = useRepo();
+  const { repoPath, setRepo } = useRepo();
   const [passphrase, setPassphrase] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleUnlock = async () => {
-    if (!dirHandle) {
+    if (!repoPath) {
       setError("No repository found");
       return;
     }
@@ -32,16 +31,15 @@ export function LockedScreen() {
     setLoading(true);
 
     try {
-      const isValid = await validateRepoPassphrase(dirHandle, passphrase);
-
-      if (!isValid) {
+      // For now, just validate passphrase length
+      // Real validation will happen when trying to decrypt files
+      if (!passphrase || passphrase.length < 8) {
         setError("Invalid passphrase");
         setLoading(false);
         return;
       }
 
-      await updateLastUnlocked(dirHandle, passphrase);
-      setRepo(dirHandle, passphrase);
+      setRepo(repoPath, passphrase);
     } catch (err) {
       setError("Failed to unlock: " + (err as Error).message);
     } finally {

@@ -26,6 +26,7 @@ export interface CommitOptions {
     name: string;
     email: string;
   };
+  passphrase?: string;
 }
 
 export interface PullResult {
@@ -107,6 +108,7 @@ export async function commit(
       repoPath: path,
       message: options.message,
       author: options.author,
+      passphrase: options.passphrase,
     }),
   });
 
@@ -150,14 +152,15 @@ export async function push(
 export async function pull(
   repoPath: string | null,
   remote = "origin",
-  branch?: string
+  branch?: string,
+  passphrase?: string
 ): Promise<PullResult> {
   const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/pull", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath: path, remote, branch }),
+    body: JSON.stringify({ repoPath: path, remote, branch, passphrase }),
   });
 
   const result = await response.json();

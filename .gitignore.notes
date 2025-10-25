@@ -1,0 +1,15 @@
+# LocalNote - Exclude plaintext markdown files from Git
+# Only encrypted .md.enc files should be committed
+
+# Exclude all plaintext .md files in the notes directory
+notes/**/*.md
+
+# Include encrypted files
+!notes/**/*.md.enc
+
+# Include encrypted config (safe to commit - encrypted with machine key)
+!.localnote/config.json.enc
+
+# Exclude other local files
+.localnote/*
+!.localnote/config.json.enc

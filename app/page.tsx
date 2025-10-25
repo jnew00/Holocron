@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { AppHeader } from "@/components/layout/AppHeader";
@@ -9,6 +9,7 @@ import { useNoteOperations } from "@/hooks/useNoteOperations";
 import { useKanbanBoards } from "@/hooks/useKanbanBoards";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { usePageHandlers } from "@/hooks/usePageHandlers";
+import { useKanbanSync } from "@/hooks/useKanbanSync";
 
 export default function Home() {
   const { isUnlocked, repoPath, passphrase } = useRepo();
@@ -17,9 +18,6 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [activeTab, setActiveTab] = useState("notes");
   const [boardSyncTrigger, setBoardSyncTrigger] = useState(0);
-
-  // Track previous tab to know when we switch TO kanban
-  const previousTabRef = useRef<string>("notes");
 
   // Use custom hooks for note operations and kanban boards
   const noteOps = useNoteOperations(repoPath);
@@ -32,6 +30,19 @@ export default function Home() {
     setActiveTab,
   });
 
+  // Memoized callbacks for child components
+  const handleBoardsChange = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const handleBoardUpdate = useCallback(() => {
+    setRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  const handleBoardSync = useCallback(() => {
+    setBoardSyncTrigger(prev => prev + 1);
+  }, []);
+
   // Auto-save hook
   useAutoSave({
     currentNote: noteOps.currentNote,
@@ -41,12 +52,10 @@ export default function Home() {
   });
 
   // Auto-sync kanban board when switching to a board tab
-  useEffect(() => {
-    if (activeTab.startsWith("kanban-") && previousTabRef.current !== activeTab) {
-      setBoardSyncTrigger((prev) => prev + 1);
-    }
-    previousTabRef.current = activeTab;
-  }, [activeTab]);
+  useKanbanSync({
+    activeTab,
+    onSync: handleBoardSync,
+  });
 
   // Show setup wizard if no repo is selected
   if (!repoPath || !isUnlocked) {
@@ -66,7 +75,7 @@ export default function Home() {
         lastSaved={noteOps.lastSaved}
         isFullscreen={isFullscreen}
         kanbanBoards={kanbanBoards}
-        onBoardsChange={() => setRefreshTrigger(prev => prev + 1)}
+        onBoardsChange={handleBoardsChange}
         onTemplateSelect={handlers.handleTemplateSelect}
       />
 
@@ -89,7 +98,7 @@ export default function Home() {
         markdown={noteOps.markdown}
         onMarkdownChange={noteOps.setMarkdown}
         kanbanBoards={kanbanBoards}
-        onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)}
+        onBoardUpdate={handleBoardUpdate}
         boardSyncTrigger={boardSyncTrigger}
       />
     </div>

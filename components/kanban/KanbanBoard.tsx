@@ -418,7 +418,7 @@ ${doneColumn.cards.map((card) => {
   };
 
   const handleSyncFromNotes = async () => {
-    if (!repoPath) return;
+    if (!repoPath || !isLoaded) return; // Don't sync until board is loaded!
 
     setIsSyncing(true);
     try {

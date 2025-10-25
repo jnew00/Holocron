@@ -70,11 +70,7 @@ export default function Home() {
   useEffect(() => {
     if (activeTab.startsWith("kanban-") && previousTabRef.current !== activeTab) {
       // Switched TO a kanban board - trigger sync
-      console.log('[AUTO-SYNC] Switched to kanban tab, triggering sync');
-      setBoardSyncTrigger((prev) => {
-        console.log('[AUTO-SYNC] boardSyncTrigger:', prev, '→', prev + 1);
-        return prev + 1;
-      });
+      setBoardSyncTrigger((prev) => prev + 1);
     }
     // Update previous tab for next comparison
     previousTabRef.current = activeTab;

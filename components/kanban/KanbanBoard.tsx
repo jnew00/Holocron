@@ -418,13 +418,8 @@ ${doneColumn.cards.map((card) => {
   };
 
   const handleSyncFromNotes = async () => {
-    console.log('[SYNC] handleSyncFromNotes called, repoPath:', !!repoPath, 'isLoaded:', isLoaded);
-    if (!repoPath || !isLoaded) {
-      console.log('[SYNC] Skipping sync - board not loaded yet');
-      return; // Don't sync until board is loaded!
-    }
+    if (!repoPath || !isLoaded) return; // Don't sync until board is loaded!
 
-    console.log('[SYNC] Starting sync from notes...');
     setIsSyncing(true);
     try {
       // Fetch all notes
@@ -493,9 +488,7 @@ ${doneColumn.cards.map((card) => {
 
   // Sync from notes when syncTrigger changes OR when board finishes loading
   useEffect(() => {
-    console.log('[BOARD-SYNC] syncTrigger:', syncTrigger, 'isLoaded:', isLoaded);
     if (repoPath && boardId && syncTrigger && syncTrigger > 0 && isLoaded) {
-      console.log('[BOARD-SYNC] Calling handleSyncFromNotes()');
       handleSyncFromNotes();
     }
   }, [syncTrigger, isLoaded]); // Now also triggers when isLoaded changes

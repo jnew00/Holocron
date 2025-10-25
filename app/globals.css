@@ -98,8 +98,6 @@
   outline: none;
   font-family: var(--font-editor, ui-monospace, monospace);
   font-size: var(--font-size-editor, 100%);
-  padding: 1rem;
-  min-height: 100%;
 }
 
 /* Table Styles */

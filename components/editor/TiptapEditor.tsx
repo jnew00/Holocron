@@ -158,9 +158,9 @@ export function TiptapEditor({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden bg-background flex flex-col h-full">
+    <div className="border rounded-lg bg-background flex flex-col flex-1 overflow-hidden">
       {editable && <EditorToolbar editor={editor} />}
-      <div className="overflow-y-auto flex-1">
+      <div className="flex-1 overflow-y-auto p-4">
         <EditorContent editor={editor} />
       </div>
     </div>

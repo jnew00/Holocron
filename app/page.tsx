@@ -492,16 +492,14 @@ export default function Home() {
               </div>
             )}
 
-            <TabsContent value="notes" className="flex-1 m-0 p-6 flex flex-col overflow-hidden">
+            <TabsContent value="notes" className="flex-1 m-0 p-6 flex flex-col">
               {currentNote ? (
-                <div className="flex-1 overflow-hidden">
-                  <TiptapEditor
-                    content={markdown}
-                    onChange={setMarkdown}
-                    placeholder="Start writing your note..."
-                    kanbanBoards={kanbanBoards}
-                  />
-                </div>
+                <TiptapEditor
+                  content={markdown}
+                  onChange={setMarkdown}
+                  placeholder="Start writing your note..."
+                  kanbanBoards={kanbanBoards}
+                />
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <FileText className="h-16 w-16 mb-4 opacity-20" />

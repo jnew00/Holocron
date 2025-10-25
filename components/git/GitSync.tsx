@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import {
   getStatus,
+  getConfig,
   commit,
   push,
   pull,
@@ -38,10 +39,11 @@ import {
   deleteBranch,
   GitStatus,
   GitBranch,
+  GitConfig,
 } from "@/lib/git/gitService";
 
 export function GitSync() {
-  const { dirHandle } = useRepo();
+  const { dirHandle, repoPath } = useRepo();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -55,11 +57,24 @@ export function GitSync() {
   const [success, setSuccess] = useState<string | null>(null);
   const [conflictedFiles, setConflictedFiles] = useState<string[]>([]);
 
-  const checkGitStatus = async () => {
-    if (!dirHandle) return;
+  const loadGitConfig = async () => {
+    if (!repoPath) return;
 
     try {
-      const gitStatus = await getStatus(dirHandle);
+      const config = await getConfig(repoPath);
+      setAuthorName(config.name);
+      setAuthorEmail(config.email);
+    } catch (err: any) {
+      console.error("Failed to load git config:", err);
+      setError(err.message);
+    }
+  };
+
+  const checkGitStatus = async () => {
+    if (!repoPath) return;
+
+    try {
+      const gitStatus = await getStatus(repoPath);
       setStatus(gitStatus);
     } catch (err: any) {
       console.error("Git status check failed:", err);
@@ -69,10 +84,10 @@ export function GitSync() {
   };
 
   const loadBranches = async () => {
-    if (!dirHandle) return;
+    if (!repoPath) return;
 
     try {
-      const branchList = await listBranches(dirHandle);
+      const branchList = await listBranches(repoPath);
       setBranches(branchList);
     } catch (err: any) {
       console.error("Failed to load branches:", err);
@@ -80,14 +95,14 @@ export function GitSync() {
   };
 
   const handleCommit = async () => {
-    if (!dirHandle || !commitMessage.trim()) return;
+    if (!repoPath || !commitMessage.trim()) return;
 
     setWorking(true);
     setError(null);
     setSuccess(null);
 
     try {
-      await commit(dirHandle, {
+      await commit(repoPath, {
         message: commitMessage,
         author: {
           name: authorName,
@@ -106,14 +121,14 @@ export function GitSync() {
   };
 
   const handlePush = async () => {
-    if (!dirHandle) return;
+    if (!repoPath) return;
 
     setWorking(true);
     setError(null);
     setSuccess(null);
 
     try {
-      await push(dirHandle, remote);
+      await push(repoPath, remote);
       setSuccess("Changes pushed to remote");
       await checkGitStatus();
     } catch (err: any) {
@@ -124,14 +139,14 @@ export function GitSync() {
   };
 
   const handlePull = async () => {
-    if (!dirHandle) return;
+    if (!repoPath) return;
 
     setWorking(true);
     setError(null);
     setSuccess(null);
 
     try {
-      const result = await pull(dirHandle, remote);
+      const result = await pull(repoPath, remote);
 
       if (result.hasConflicts) {
         setError(`Merge conflicts detected in ${result.conflictedFiles?.length || 0} files`);
@@ -150,14 +165,14 @@ export function GitSync() {
   };
 
   const handleCreateBranch = async () => {
-    if (!dirHandle || !newBranchName.trim()) return;
+    if (!repoPath || !newBranchName.trim()) return;
 
     setWorking(true);
     setError(null);
     setSuccess(null);
 
     try {
-      await createBranch(dirHandle, newBranchName);
+      await createBranch(repoPath, newBranchName);
       setSuccess(`Created and switched to branch: ${newBranchName}`);
       setNewBranchName("");
       await checkGitStatus();
@@ -170,14 +185,14 @@ export function GitSync() {
   };
 
   const handleSwitchBranch = async (branchName: string) => {
-    if (!dirHandle) return;
+    if (!repoPath) return;
 
     setWorking(true);
     setError(null);
     setSuccess(null);
 
     try {
-      await switchBranch(dirHandle, branchName);
+      await switchBranch(repoPath, branchName);
       setSuccess(`Switched to branch: ${branchName}`);
       await checkGitStatus();
       await loadBranches();
@@ -189,14 +204,14 @@ export function GitSync() {
   };
 
   const handleDeleteBranch = async (branchName: string) => {
-    if (!dirHandle) return;
+    if (!repoPath) return;
 
     setWorking(true);
     setError(null);
     setSuccess(null);
 
     try {
-      await deleteBranch(dirHandle, branchName);
+      await deleteBranch(repoPath, branchName);
       setSuccess(`Deleted branch: ${branchName}`);
       await loadBranches();
     } catch (err: any) {
@@ -209,6 +224,7 @@ export function GitSync() {
   const handleOpen = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
+      loadGitConfig();
       checkGitStatus();
       loadBranches();
     }
@@ -301,27 +317,12 @@ export function GitSync() {
               </TabsList>
 
               <TabsContent value="sync" className="space-y-4 mt-4">
-                {/* Author Info */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="author-name">Author Name</Label>
-                    <Input
-                      id="author-name"
-                      value={authorName}
-                      onChange={(e) => setAuthorName(e.target.value)}
-                      placeholder="Your Name"
-                    />
+                {/* Author Info Display */}
+                {(authorName || authorEmail) && (
+                  <div className="flex items-center gap-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground">
+                    <span>Committing as: {authorName} &lt;{authorEmail}&gt;</span>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="author-email">Author Email</Label>
-                    <Input
-                      id="author-email"
-                      value={authorEmail}
-                      onChange={(e) => setAuthorEmail(e.target.value)}
-                      placeholder="you@example.com"
-                    />
-                  </div>
-                </div>
+                )}
 
                 {/* Commit Section */}
                 <div className="space-y-2">

@@ -35,28 +35,52 @@ export interface PullResult {
   output: string;
 }
 
+export interface GitConfig {
+  name: string;
+  email: string;
+}
+
 /**
- * Get the repository path from FileSystemDirectoryHandle
- * Note: This is a workaround - we'll need to store the path when user selects directory
+ * Get the repository path
+ * Must be provided by the caller (from RepoContext)
  */
-function getRepoPath(dirHandle: FileSystemDirectoryHandle): string {
-  // For now, we'll use the current working directory
-  // In production, you'd need to store the actual path when user selects the directory
-  return (dirHandle as any).name || "/Users/Jason/Development/NoteTaker";
+function getRepoPath(repoPath: string | null): string {
+  if (!repoPath) {
+    throw new Error("Repository path not configured. Please set it in Settings.");
+  }
+  return repoPath;
+}
+
+/**
+ * Get Git config (user name and email)
+ */
+export async function getConfig(
+  repoPath: string | null
+): Promise<GitConfig> {
+  const path = getRepoPath(repoPath);
+
+  const response = await fetch(`/api/git/config?repoPath=${encodeURIComponent(path)}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to get Git config");
+  }
+
+  return response.json();
 }
 
 /**
  * Get current Git status
  */
 export async function getStatus(
-  dirHandle: FileSystemDirectoryHandle
+  repoPath: string | null
 ): Promise<GitStatus> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/status", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath }),
+    body: JSON.stringify({ repoPath: path }),
   });
 
   if (!response.ok) {
@@ -71,16 +95,16 @@ export async function getStatus(
  * Commit all changes
  */
 export async function commit(
-  dirHandle: FileSystemDirectoryHandle,
+  repoPath: string | null,
   options: CommitOptions
 ): Promise<{ success: boolean; output: string }> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/commit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      repoPath,
+      repoPath: path,
       message: options.message,
       author: options.author,
     }),
@@ -99,16 +123,16 @@ export async function commit(
  * Push to remote
  */
 export async function push(
-  dirHandle: FileSystemDirectoryHandle,
+  repoPath: string | null,
   remote = "origin",
   branch?: string
 ): Promise<{ success: boolean; output: string }> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/push", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath, remote, branch }),
+    body: JSON.stringify({ repoPath: path, remote, branch }),
   });
 
   const result = await response.json();
@@ -124,16 +148,16 @@ export async function push(
  * Pull from remote
  */
 export async function pull(
-  dirHandle: FileSystemDirectoryHandle,
+  repoPath: string | null,
   remote = "origin",
   branch?: string
 ): Promise<PullResult> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/pull", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath, remote, branch }),
+    body: JSON.stringify({ repoPath: path, remote, branch }),
   });
 
   const result = await response.json();
@@ -149,11 +173,11 @@ export async function pull(
  * List all branches
  */
 export async function listBranches(
-  dirHandle: FileSystemDirectoryHandle
+  repoPath: string | null
 ): Promise<GitBranch[]> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
-  const response = await fetch(`/api/git/branches?repoPath=${encodeURIComponent(repoPath)}`);
+  const response = await fetch(`/api/git/branches?repoPath=${encodeURIComponent(path)}`);
 
   if (!response.ok) {
     const error = await response.json();
@@ -168,15 +192,15 @@ export async function listBranches(
  * Create a new branch
  */
 export async function createBranch(
-  dirHandle: FileSystemDirectoryHandle,
+  repoPath: string | null,
   branchName: string
 ): Promise<{ success: boolean; output: string }> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/branches", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath, action: "create", branchName }),
+    body: JSON.stringify({ repoPath: path, action: "create", branchName }),
   });
 
   const result = await response.json();
@@ -192,15 +216,15 @@ export async function createBranch(
  * Switch to a branch
  */
 export async function switchBranch(
-  dirHandle: FileSystemDirectoryHandle,
+  repoPath: string | null,
   branchName: string
 ): Promise<{ success: boolean; output: string }> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/branches", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath, action: "switch", branchName }),
+    body: JSON.stringify({ repoPath: path, action: "switch", branchName }),
   });
 
   const result = await response.json();
@@ -216,15 +240,15 @@ export async function switchBranch(
  * Delete a branch
  */
 export async function deleteBranch(
-  dirHandle: FileSystemDirectoryHandle,
+  repoPath: string | null,
   branchName: string
 ): Promise<{ success: boolean; output: string }> {
-  const repoPath = getRepoPath(dirHandle);
+  const path = getRepoPath(repoPath);
 
   const response = await fetch("/api/git/branches", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath, action: "delete", branchName }),
+    body: JSON.stringify({ repoPath: path, action: "delete", branchName }),
   });
 
   const result = await response.json();

@@ -5,9 +5,11 @@ import { LockManager } from "@/lib/security/lockManager";
 
 interface RepoContextType {
   dirHandle: FileSystemDirectoryHandle | null;
+  repoPath: string | null;
   isUnlocked: boolean;
   passphrase: string | null;
-  setRepo: (handle: FileSystemDirectoryHandle, passphrase: string) => void;
+  setRepo: (handle: FileSystemDirectoryHandle, passphrase: string, path?: string) => void;
+  setRepoPath: (path: string) => void;
   lock: () => void;
   lockManager: LockManager | null;
 }
@@ -16,9 +18,23 @@ const RepoContext = createContext<RepoContextType | undefined>(undefined);
 
 export function RepoProvider({ children }: { children: React.ReactNode }) {
   const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [repoPath, setRepoPathState] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState<string | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const lockManagerRef = useRef<LockManager | null>(null);
+
+  // Load repo path from localStorage on mount
+  useEffect(() => {
+    const savedPath = localStorage.getItem("localnote-repo-path");
+    if (savedPath) {
+      setRepoPathState(savedPath);
+    }
+  }, []);
+
+  const setRepoPath = useCallback((path: string) => {
+    setRepoPathState(path);
+    localStorage.setItem("localnote-repo-path", path);
+  }, []);
 
   const lock = useCallback(() => {
     setPassphrase(null);
@@ -28,10 +44,15 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const setRepo = useCallback((handle: FileSystemDirectoryHandle, pass: string) => {
+  const setRepo = useCallback((handle: FileSystemDirectoryHandle, pass: string, path?: string) => {
     setDirHandle(handle);
     setPassphrase(pass);
     setIsUnlocked(true);
+
+    // Store repo path if provided (optional - only needed for Git operations)
+    if (path) {
+      setRepoPath(path);
+    }
 
     // Initialize lock manager when repo is unlocked
     if (!lockManagerRef.current) {
@@ -54,7 +75,7 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
         lock();
       }
     );
-  }, [lock]);
+  }, [lock, setRepoPath]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -69,9 +90,11 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
     <RepoContext.Provider
       value={{
         dirHandle,
+        repoPath,
         isUnlocked,
         passphrase,
         setRepo,
+        setRepoPath,
         lock,
         lockManager: lockManagerRef.current,
       }}

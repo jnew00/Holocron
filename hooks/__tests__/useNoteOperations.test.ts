@@ -10,15 +10,11 @@ jest.mock('@/lib/repositories');
 describe('useNoteOperations', () => {
   it('should initialize with default state', () => {
     const { result } = renderHook(() =>
-      useNoteOperations({
-        repoPath: null,
-        passphrase: null,
-        currentNotePath: null,
-        onNoteChange: jest.fn(),
-      })
+      useNoteOperations(null)
     );
 
-    expect(result.current.content).toBe('');
-    expect(result.current.metadata).toEqual({});
+    expect(result.current.markdown).toBe('');
+    expect(result.current.noteFrontmatter).toEqual({});
+    expect(result.current.currentNote).toBeNull();
   });
 });

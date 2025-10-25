@@ -62,9 +62,12 @@ describe('useKanbanMentionList', () => {
     );
 
     const event = new KeyboardEvent('keydown', { key: 'ArrowDown' });
-    const handled = ref.current.onKeyDown({ event });
+    let handled: boolean;
+    act(() => {
+      handled = ref.current.onKeyDown({ event });
+    });
 
-    expect(handled).toBe(true);
+    expect(handled!).toBe(true);
   });
 
   it('should handle ArrowUp key navigation', () => {
@@ -74,9 +77,12 @@ describe('useKanbanMentionList', () => {
     );
 
     const event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
-    const handled = ref.current.onKeyDown({ event });
+    let handled: boolean;
+    act(() => {
+      handled = ref.current.onKeyDown({ event });
+    });
 
-    expect(handled).toBe(true);
+    expect(handled!).toBe(true);
   });
 
   it('should handle Enter key to select item', () => {
@@ -162,6 +168,8 @@ describe('useKanbanMentionList', () => {
     // Navigate to item 2
     act(() => {
       ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) });
+    });
+    act(() => {
       ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) });
     });
     expect(result.current.selectedIndex).toBe(2);
@@ -228,6 +236,8 @@ describe('useKanbanMentionList', () => {
     // Navigate to item 2
     act(() => {
       ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) });
+    });
+    act(() => {
       ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) });
     });
 

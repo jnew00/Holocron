@@ -333,10 +333,19 @@ describe('useAutoSync', () => {
 
     mockPerformAutoSync.mockClear();
 
-    // Change repo path
-    rerender({ repoPath: '/test/repo2' });
+    // Advance time past the cooldown period (60 seconds)
+    await act(async () => {
+      jest.advanceTimersByTime(60000);
+      await Promise.resolve();
+    });
 
-    // Should sync with new repo path
+    // Change repo path
+    await act(async () => {
+      rerender({ repoPath: '/test/repo2' });
+      await Promise.resolve();
+    });
+
+    // Should sync with new repo path after 10 seconds
     await act(async () => {
       jest.advanceTimersByTime(10000);
       await Promise.resolve();

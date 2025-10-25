@@ -258,18 +258,25 @@ describe('useAddCard', () => {
       })
     );
 
+    // Each addition should complete before the next one starts
     act(() => {
       result.current.setNewCardTitle('Task 1');
+    });
+    act(() => {
       result.current.handleAddCard();
     });
 
     act(() => {
       result.current.setNewCardTitle('Task 2');
+    });
+    act(() => {
       result.current.handleAddCard();
     });
 
     act(() => {
       result.current.setNewCardTitle('Task 3');
+    });
+    act(() => {
       result.current.handleAddCard();
     });
 

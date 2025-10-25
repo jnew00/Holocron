@@ -2,7 +2,7 @@
  * Tests for useKanbanCards hook
  */
 
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useKanbanCards } from '../useKanbanCards';
 import { KanbanBoard, createCard } from '@/lib/kanban/types';
 import { NoteRepository } from '@/lib/repositories';
@@ -283,16 +283,24 @@ describe('useKanbanCards', () => {
       })
     );
 
-    let syncingDuringArchive = false;
-
-    await act(async () => {
-      const archivePromise = result.current.handleArchiveDoneColumn('done');
-      syncingDuringArchive = result.current.isSyncing;
-      resolveSave!();
-      await archivePromise;
+    // Start the archive operation
+    let archivePromise: Promise<void>;
+    act(() => {
+      archivePromise = result.current.handleArchiveDoneColumn('done');
     });
 
-    expect(syncingDuringArchive).toBe(true);
+    // Wait for isSyncing to become true
+    await waitFor(() => {
+      expect(result.current.isSyncing).toBe(true);
+    });
+
+    // Resolve the save operation
+    await act(async () => {
+      resolveSave!();
+      await archivePromise!;
+    });
+
+    // After completion, isSyncing should be false
     expect(result.current.isSyncing).toBe(false);
   });
 

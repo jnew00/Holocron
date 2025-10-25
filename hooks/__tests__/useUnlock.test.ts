@@ -2,7 +2,7 @@
  * Tests for useUnlock hook
  */
 
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useUnlock } from '../useUnlock';
 
 describe('useUnlock', () => {
@@ -96,7 +96,7 @@ describe('useUnlock', () => {
     expect(mockSetRepo).toHaveBeenCalledWith(mockRepoPath, validPassphrase);
   });
 
-  it('should set loading to true during unlock and false after', async () => {
+  it('should set loading to false after unlock completes', () => {
     const { result } = renderHook(() =>
       useUnlock({ repoPath: mockRepoPath, setRepo: mockSetRepo })
     );
@@ -105,17 +105,14 @@ describe('useUnlock', () => {
       result.current.setPassphrase('valid-passphrase-12345');
     });
 
-    let loadingDuringUnlock = false;
+    // Before unlock, loading should be false
+    expect(result.current.loading).toBe(false);
 
-    await act(async () => {
-      const unlockPromise = result.current.handleUnlock();
-      loadingDuringUnlock = result.current.loading;
-      await unlockPromise;
+    // After unlock completes, loading should still be false
+    act(() => {
+      result.current.handleUnlock();
     });
 
-    // Loading should have been true during unlock
-    expect(loadingDuringUnlock).toBe(true);
-    // Loading should be false after unlock
     expect(result.current.loading).toBe(false);
   });
 

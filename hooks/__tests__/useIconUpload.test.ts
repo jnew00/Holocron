@@ -6,12 +6,12 @@ import { renderHook } from '@testing-library/react';
 import { useIconUpload } from '../useIconUpload';
 
 describe('useIconUpload', () => {
-  it('should initialize with null icon', () => {
-    const mockOnIconSelect = jest.fn();
+  it('should initialize with handleIconUpload function', () => {
+    const mockOnIconChange = jest.fn();
     const { result } = renderHook(() =>
-      useIconUpload(mockOnIconSelect)
+      useIconUpload({ onIconChange: mockOnIconChange })
     );
 
-    expect(result.current.selectedIcon).toBeNull();
+    expect(result.current.handleIconUpload).toBeInstanceOf(Function);
   });
 });

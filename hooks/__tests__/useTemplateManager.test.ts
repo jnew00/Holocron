@@ -8,9 +8,9 @@ import { useTemplateManager } from '../useTemplateManager';
 describe('useTemplateManager', () => {
   it('should initialize with empty state', () => {
     const { result } = renderHook(() =>
-      useTemplateManager(null, null)
+      useTemplateManager(null, null, false)
     );
 
-    expect(result.current.templates).toEqual([]);
+    expect(result.current.customTemplates).toEqual([]);
   });
 });

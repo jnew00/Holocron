@@ -12,9 +12,9 @@ describe('useKanbanColumns', () => {
     id: 'test-board',
     name: 'Test Board',
     columns: [
-      { id: 'todo', name: 'To Do', cards: [], color: '#blue' },
-      { id: 'in-progress', name: 'In Progress', cards: [], color: '#yellow' },
-      { id: 'done', name: 'Done', cards: [], color: '#green' },
+      { id: 'todo', title: 'To Do', cards: [], color: '#blue' },
+      { id: 'in-progress', title: 'In Progress', cards: [], color: '#yellow' },
+      { id: 'done', title: 'Done', cards: [], color: '#green' },
     ],
     createdAt: '2025-01-01T00:00:00.000Z',
     updatedAt: '2025-01-01T00:00:00.000Z',
@@ -61,7 +61,7 @@ describe('useKanbanColumns', () => {
     });
 
     expect(result.current.editingColumns).toHaveLength(4);
-    expect(result.current.editingColumns[3].name).toBe('New Column');
+    expect(result.current.editingColumns[3].title).toBe('New Column');
   });
 
   it('should delete column from editing state', () => {
@@ -91,11 +91,11 @@ describe('useKanbanColumns', () => {
     });
 
     act(() => {
-      result.current.handleUpdateColumn('todo', { name: 'Updated Name' });
+      result.current.handleUpdateColumn('todo', { title: 'Updated Name' });
     });
 
     const updatedColumn = result.current.editingColumns.find((col) => col.id === 'todo');
-    expect(updatedColumn?.name).toBe('Updated Name');
+    expect(updatedColumn?.title).toBe('Updated Name');
   });
 
   it('should update column with multiple properties', () => {
@@ -109,14 +109,14 @@ describe('useKanbanColumns', () => {
 
     act(() => {
       result.current.handleUpdateColumn('todo', {
-        name: 'Updated Name',
+        title: 'Updated Name',
         color: '#red',
         wipLimit: 5,
       });
     });
 
     const updatedColumn = result.current.editingColumns.find((col) => col.id === 'todo');
-    expect(updatedColumn?.name).toBe('Updated Name');
+    expect(updatedColumn?.title).toBe('Updated Name');
     expect(updatedColumn?.color).toBe('#red');
     expect(updatedColumn?.wipLimit).toBe(5);
   });
@@ -131,7 +131,7 @@ describe('useKanbanColumns', () => {
     });
 
     act(() => {
-      result.current.handleUpdateColumn('todo', { name: 'Updated Todo' });
+      result.current.handleUpdateColumn('todo', { title: 'Updated Todo' });
     });
 
     act(() => {
@@ -148,11 +148,11 @@ describe('useKanbanColumns', () => {
       columns: [
         {
           id: 'todo',
-          name: 'To Do',
+          title: 'To Do',
           cards: [{ id: 'card-1', title: 'Task 1', createdAt: '2025-01-01', updatedAt: '2025-01-01' }],
           color: '#blue',
         },
-        { id: 'done', name: 'Done', cards: [], color: '#green' },
+        { id: 'done', title: 'Done', cards: [], color: '#green' },
       ],
     };
 
@@ -170,7 +170,7 @@ describe('useKanbanColumns', () => {
     });
 
     act(() => {
-      result.current.handleUpdateColumn('todo', { name: 'Updated Todo' });
+      result.current.handleUpdateColumn('todo', { title: 'Updated Todo' });
     });
 
     act(() => {
@@ -222,7 +222,7 @@ describe('useKanbanColumns', () => {
     );
 
     const newColumns = [
-      { id: 'custom', name: 'Custom', cards: [], color: '#purple' },
+      { id: 'custom', title: 'Custom', cards: [], color: '#purple' },
     ];
 
     act(() => {
@@ -269,6 +269,9 @@ describe('useKanbanColumns', () => {
   });
 
   it('should generate unique IDs for new columns', () => {
+    let mockTime = 1000000;
+    jest.spyOn(Date, 'now').mockImplementation(() => mockTime++);
+
     const { result } = renderHook(() =>
       useKanbanColumns({ board: mockBoard, setBoard: mockSetBoard })
     );
@@ -279,11 +282,16 @@ describe('useKanbanColumns', () => {
 
     act(() => {
       result.current.handleAddColumn();
+    });
+
+    act(() => {
       result.current.handleAddColumn();
     });
 
     const ids = result.current.editingColumns.slice(-2).map((col) => col.id);
     expect(ids[0]).not.toBe(ids[1]);
+
+    jest.restoreAllMocks();
   });
 
   it('should reset editing columns when opening settings again', () => {
@@ -298,7 +306,7 @@ describe('useKanbanColumns', () => {
 
     act(() => {
       result.current.handleAddColumn();
-      result.current.handleUpdateColumn('todo', { name: 'Modified' });
+      result.current.handleUpdateColumn('todo', { title: 'Modified' });
     });
 
     // Close without saving
@@ -314,7 +322,7 @@ describe('useKanbanColumns', () => {
     // Should reset to original board columns
     expect(result.current.editingColumns).toHaveLength(3);
     const todoColumn = result.current.editingColumns.find((col) => col.id === 'todo');
-    expect(todoColumn?.name).toBe('To Do');
+    expect(todoColumn?.title).toBe('To Do');
   });
 
   it('should handle board prop changes', () => {
@@ -327,7 +335,7 @@ describe('useKanbanColumns', () => {
 
     const updatedBoard: KanbanBoard = {
       ...mockBoard,
-      columns: [{ id: 'new-col', name: 'New Column', cards: [], color: '#red' }],
+      columns: [{ id: 'new-col', title: 'New Column', cards: [], color: '#red' }],
     };
 
     rerender({ board: updatedBoard });

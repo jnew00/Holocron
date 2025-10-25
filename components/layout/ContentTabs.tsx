@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { FileText, Kanban, Maximize2, Minimize2 } from "lucide-react";
@@ -16,7 +17,7 @@ interface ContentTabsProps {
   children: React.ReactNode;
 }
 
-export function ContentTabs({
+export const ContentTabs = memo(function ContentTabs({
   activeTab,
   onTabChange,
   kanbanBoards,
@@ -88,4 +89,4 @@ export function ContentTabs({
       {children}
     </Tabs>
   );
-}
+});

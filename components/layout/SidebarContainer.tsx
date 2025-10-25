@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { NotesSidebar } from "@/components/notes/NotesSidebar";
 import { Button } from "@/components/ui/button";
 import { PanelLeftOpen } from "lucide-react";
@@ -16,7 +17,7 @@ interface SidebarContainerProps {
   refreshTrigger: number;
 }
 
-export function SidebarContainer({
+export const SidebarContainer = memo(function SidebarContainer({
   isCollapsed,
   onCollapse,
   isFullscreen,
@@ -61,4 +62,4 @@ export function SidebarContainer({
       refreshTrigger={refreshTrigger}
     />
   );
-}
+});

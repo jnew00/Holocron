@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { SidebarContainer } from "@/components/layout/SidebarContainer";
 import { ContentTabs } from "@/components/layout/ContentTabs";
 import { NoteEditorContainer } from "@/components/notes/NoteEditorContainer";
@@ -36,7 +37,7 @@ interface MainLayoutProps {
   boardSyncTrigger: number;
 }
 
-export function MainLayout({
+export const MainLayout = memo(function MainLayout({
   sidebarCollapsed,
   onSidebarCollapse,
   currentNoteId,
@@ -99,4 +100,4 @@ export function MainLayout({
       </main>
     </div>
   );
-}
+});

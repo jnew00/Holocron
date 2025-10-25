@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { FileText } from "lucide-react";
 import { KanbanBoard as KanbanBoardType } from "@/lib/kanban/types";
@@ -11,7 +12,7 @@ interface NoteEditorContainerProps {
   kanbanBoards: KanbanBoardType[];
 }
 
-export function NoteEditorContainer({
+export const NoteEditorContainer = memo(function NoteEditorContainer({
   markdown,
   onChange,
   hasNote,
@@ -39,4 +40,4 @@ export function NoteEditorContainer({
       />
     </div>
   );
-}
+});

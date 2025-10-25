@@ -54,8 +54,8 @@ export function useNoteOperations(repoPath: string | null) {
   };
 
   // Create new note
-  const handleNewNote = useCallback(async () => {
-    if (!repoPath) return;
+  const handleNewNote = useCallback(async (): Promise<boolean> => {
+    if (!repoPath) return false;
 
     const baseContent = "# Untitled Note\n\n";
     const frontmatter = { type: "note" };
@@ -95,8 +95,8 @@ export function useNoteOperations(repoPath: string | null) {
   }, [repoPath]);
 
   // Create note from template
-  const handleTemplateSelect = useCallback(async (template: NoteTemplate) => {
-    if (!repoPath) return;
+  const handleTemplateSelect = useCallback(async (template: NoteTemplate): Promise<boolean> => {
+    if (!repoPath) return false;
 
     const frontmatter = { type: template.type };
     const contentWithFrontmatter = addFrontmatter(template.content, frontmatter);
@@ -135,7 +135,7 @@ export function useNoteOperations(repoPath: string | null) {
   }, [repoPath]);
 
   // Load a note
-  const handleSelectNote = useCallback(async (notePath: string) => {
+  const handleSelectNote = useCallback(async (notePath: string): Promise<void> => {
     if (!repoPath) return;
 
     try {
@@ -222,8 +222,8 @@ export function useNoteOperations(repoPath: string | null) {
   }, [repoPath, markdown, noteFrontmatter]);
 
   // Delete a note
-  const handleDeleteNote = useCallback(async (notePath: string) => {
-    if (!repoPath) return;
+  const handleDeleteNote = useCallback(async (notePath: string): Promise<boolean> => {
+    if (!repoPath) return false;
 
     try {
       const noteRepo = new NoteRepository(repoPath);
@@ -245,8 +245,8 @@ export function useNoteOperations(repoPath: string | null) {
   }, [repoPath, currentNote]);
 
   // Archive a note
-  const handleArchiveNote = useCallback(async (notePath: string) => {
-    if (!repoPath) return;
+  const handleArchiveNote = useCallback(async (notePath: string): Promise<boolean> => {
+    if (!repoPath) return false;
 
     try {
       const noteRepo = new NoteRepository(repoPath);

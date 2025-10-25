@@ -8,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { useNoteOperations } from "@/hooks/useNoteOperations";
 import { useKanbanBoards } from "@/hooks/useKanbanBoards";
 import { useAutoSave } from "@/hooks/useAutoSave";
+import { usePageHandlers } from "@/hooks/usePageHandlers";
 
 export default function Home() {
   const { isUnlocked, repoPath, passphrase } = useRepo();
@@ -24,6 +25,13 @@ export default function Home() {
   const noteOps = useNoteOperations(repoPath);
   const { kanbanBoards } = useKanbanBoards(repoPath, refreshTrigger);
 
+  // Page-level handlers that coordinate refresh triggers
+  const handlers = usePageHandlers({
+    noteOps,
+    setRefreshTrigger,
+    setActiveTab,
+  });
+
   // Auto-save hook
   useAutoSave({
     currentNote: noteOps.currentNote,
@@ -39,37 +47,6 @@ export default function Home() {
     }
     previousTabRef.current = activeTab;
   }, [activeTab]);
-
-  // Wrapper handlers that update refresh trigger
-  const handleNewNote = async () => {
-    const success = await noteOps.handleNewNote();
-    if (success) setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleTemplateSelect = async (template: any) => {
-    const success = await noteOps.handleTemplateSelect(template);
-    if (success) setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleSelectNote = async (notePath: string) => {
-    await noteOps.handleSelectNote(notePath);
-    setActiveTab("notes");
-  };
-
-  const handleDeleteNote = async (notePath: string) => {
-    const success = await noteOps.handleDeleteNote(notePath);
-    if (success) setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleArchiveNote = async (notePath: string) => {
-    const success = await noteOps.handleArchiveNote(notePath);
-    if (success) setRefreshTrigger((prev) => prev + 1);
-  };
-
-  const handleSave = async () => {
-    const titleChanged = await noteOps.handleSave();
-    if (titleChanged) setRefreshTrigger((prev) => prev + 1);
-  };
 
   // Show setup wizard if no repo is selected
   if (!repoPath || !isUnlocked) {
@@ -90,7 +67,7 @@ export default function Home() {
         isFullscreen={isFullscreen}
         kanbanBoards={kanbanBoards}
         onBoardsChange={() => setRefreshTrigger(prev => prev + 1)}
-        onTemplateSelect={handleTemplateSelect}
+        onTemplateSelect={handlers.handleTemplateSelect}
       />
 
       {/* Main Content Area */}
@@ -98,10 +75,10 @@ export default function Home() {
         sidebarCollapsed={sidebarCollapsed}
         onSidebarCollapse={setSidebarCollapsed}
         currentNoteId={noteOps.currentNote?.path || null}
-        onSelectNote={handleSelectNote}
-        onNewNote={handleNewNote}
-        onArchiveNote={handleArchiveNote}
-        onDeleteNote={handleDeleteNote}
+        onSelectNote={handlers.handleSelectNote}
+        onNewNote={handlers.handleNewNote}
+        onArchiveNote={handlers.handleArchiveNote}
+        onDeleteNote={handlers.handleDeleteNote}
         refreshTrigger={refreshTrigger}
         activeTab={activeTab}
         onTabChange={setActiveTab}

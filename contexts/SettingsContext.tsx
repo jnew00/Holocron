@@ -161,12 +161,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           existingConfig = data.config || existingConfig;
         }
 
-        // Merge settings into config
+        // Merge settings into config, preserving passphrase
         const newConfig = {
           ...existingConfig,
           settings: updated,
           updatedAt: new Date().toISOString(),
         };
+
+        // Ensure passphrase is preserved
+        if (!newConfig.passphrase && existingConfig.passphrase) {
+          newConfig.passphrase = existingConfig.passphrase;
+        }
+
+        console.log("[SettingsContext] Saving config, has passphrase:", !!newConfig.passphrase);
 
         // Write updated config
         await fetch("/api/config/write", {

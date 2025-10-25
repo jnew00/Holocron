@@ -43,6 +43,7 @@ export default function Home() {
   const { isUnlocked, repoPath, passphrase } = useRepo();
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [markdown, setMarkdown] = useState("");
+  const [noteFrontmatter, setNoteFrontmatter] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -131,7 +132,8 @@ export default function Home() {
     if (!repoPath) return;
 
     const baseContent = "# Untitled Note\n\n";
-    const contentWithFrontmatter = addFrontmatter(baseContent, { type: "note" });
+    const frontmatter = { type: "note" };
+    const contentWithFrontmatter = addFrontmatter(baseContent, frontmatter);
 
     const newNote: Note = {
       id: generateNoteId(),
@@ -158,7 +160,8 @@ export default function Home() {
 
       if (response.ok) {
         setCurrentNote(newNote);
-        setMarkdown(contentWithFrontmatter);
+        setMarkdown(baseContent); // Only show content, not frontmatter
+        setNoteFrontmatter(frontmatter); // Store frontmatter separately
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -170,9 +173,8 @@ export default function Home() {
     if (!repoPath) return;
 
     // Add frontmatter with the template type to the content
-    const contentWithFrontmatter = addFrontmatter(template.content, {
-      type: template.type
-    });
+    const frontmatter = { type: template.type };
+    const contentWithFrontmatter = addFrontmatter(template.content, frontmatter);
 
     const newNote: Note = {
       id: generateNoteId(),
@@ -199,7 +201,8 @@ export default function Home() {
 
       if (response.ok) {
         setCurrentNote(newNote);
-        setMarkdown(contentWithFrontmatter);
+        setMarkdown(template.content); // Only show content, not frontmatter
+        setNoteFrontmatter(frontmatter); // Store frontmatter separately
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -234,7 +237,8 @@ export default function Home() {
         };
 
         setCurrentNote(note);
-        setMarkdown(note.content);
+        setMarkdown(markdownContent); // Only show content, not frontmatter
+        setNoteFrontmatter(frontmatter); // Store frontmatter separately
       }
     } catch (error) {
       console.error("Failed to load note:", error);
@@ -246,17 +250,16 @@ export default function Home() {
 
     setIsSaving(true);
     try {
-      // Extract frontmatter and content separately
-      const { data: frontmatter, content: markdownContent } = extractFrontmatter(markdown);
-
       // Extract title from markdown (first H1)
-      const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
+      const titleMatch = markdown.match(/^#\s+(.+)$/m);
       const title = titleMatch ? titleMatch[1] : "Untitled";
 
-      // Ensure type is preserved in frontmatter
-      const contentToSave = addFrontmatter(markdown, {
-        type: currentNote.type || frontmatter.type || "note",
-      });
+      // Merge frontmatter with markdown content for saving
+      const mergedFrontmatter = {
+        ...noteFrontmatter,
+        type: currentNote.type || noteFrontmatter.type || "note",
+      };
+      const contentToSave = addFrontmatter(markdown, mergedFrontmatter);
 
       const updatedNote: Note = {
         ...currentNote,
@@ -487,14 +490,16 @@ export default function Home() {
               </div>
             )}
 
-            <TabsContent value="notes" className="flex-1 overflow-auto m-0 p-6">
+            <TabsContent value="notes" className="flex-1 m-0 p-6 flex flex-col min-h-0">
               {currentNote ? (
-                <TiptapEditor
-                  content={markdown}
-                  onChange={setMarkdown}
-                  placeholder="Start writing your note..."
-                  kanbanBoards={kanbanBoards}
-                />
+                <div className="flex-1 min-h-0">
+                  <TiptapEditor
+                    content={markdown}
+                    onChange={setMarkdown}
+                    placeholder="Start writing your note..."
+                    kanbanBoards={kanbanBoards}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <FileText className="h-16 w-16 mb-4 opacity-20" />

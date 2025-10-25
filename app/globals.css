@@ -96,6 +96,8 @@
 .ProseMirror {
   outline: none;
   font-family: var(--font-editor, ui-monospace, monospace);
+  padding: 1rem;
+  min-height: 100%;
 }
 
 /* Table Styles */

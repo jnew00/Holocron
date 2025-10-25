@@ -159,31 +159,34 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (readResponse.ok) {
           const data = await readResponse.json();
           existingConfig = data.config || existingConfig;
+          console.log("[SettingsContext] Existing config has passphrase:", !!existingConfig.passphrase);
         }
 
-        // Merge settings into config, preserving passphrase
-        const newConfig = {
-          ...existingConfig,
-          settings: updated,
-          updatedAt: new Date().toISOString(),
-        };
+        // CRITICAL: Don't save settings if we might lose the passphrase
+        if (existingConfig.passphrase) {
+          // Merge settings into config, ALWAYS preserving passphrase
+          const newConfig = {
+            ...existingConfig,
+            settings: updated,
+            updatedAt: new Date().toISOString(),
+            // Explicitly preserve passphrase (critical!)
+            passphrase: existingConfig.passphrase,
+          };
 
-        // Ensure passphrase is preserved
-        if (!newConfig.passphrase && existingConfig.passphrase) {
-          newConfig.passphrase = existingConfig.passphrase;
+          console.log("[SettingsContext] Saving config WITH passphrase preserved");
+
+          // Write updated config
+          await fetch("/api/config/write", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              repoPath,
+              config: newConfig,
+            }),
+          });
+        } else {
+          console.warn("[SettingsContext] Skipping config save - no passphrase in existing config, would lose it!");
         }
-
-        console.log("[SettingsContext] Saving config, has passphrase:", !!newConfig.passphrase);
-
-        // Write updated config
-        await fetch("/api/config/write", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            repoPath,
-            config: newConfig,
-          }),
-        });
       } catch (e) {
         console.error("Failed to save settings to config:", e);
       }

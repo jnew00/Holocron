@@ -95,22 +95,28 @@ export async function getStatus(
   try {
     const status = await gitRepo.status();
 
+    // Ensure arrays exist (defensive programming)
+    const modified = status.modified || [];
+    const created = status.created || [];
+    const deleted = status.deleted || [];
+    const untracked = status.untracked || [];
+
     // Adapt repository response to gitService format
     return {
-      branch: status.current,
-      modified: status.modified.length,
-      added: status.created.length,
-      deleted: status.deleted.length,
-      untracked: status.untracked.length,
-      ahead: status.ahead,
-      behind: status.behind,
-      hasChanges: status.modified.length > 0 || status.created.length > 0 ||
-                  status.deleted.length > 0 || status.untracked.length > 0,
+      branch: status.current || 'main',
+      modified: modified.length,
+      added: created.length,
+      deleted: deleted.length,
+      untracked: untracked.length,
+      ahead: status.ahead || 0,
+      behind: status.behind || 0,
+      hasChanges: modified.length > 0 || created.length > 0 ||
+                  deleted.length > 0 || untracked.length > 0,
       files: {
-        modified: status.modified,
-        added: status.created,
-        deleted: status.deleted,
-        untracked: status.untracked,
+        modified: modified,
+        added: created,
+        deleted: deleted,
+        untracked: untracked,
       },
     };
   } catch (error) {

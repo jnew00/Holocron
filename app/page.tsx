@@ -371,7 +371,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-3">
               <Image
-                src="/holocron.png"
+                src="/tesseract.png"
                 alt="Holocron"
                 width={48}
                 height={48}

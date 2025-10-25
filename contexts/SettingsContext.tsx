@@ -15,6 +15,13 @@ interface Settings {
   // Font size settings (percentage: 50-200)
   fontSizeGlobal: number;
   fontSizeEditor: number;
+  // Auto-sync settings
+  autoSyncEnabled: boolean;
+  autoSyncInterval: number; // in minutes
+  // Scheduled sync settings
+  autoSyncScheduleEnabled: boolean;
+  autoSyncScheduleTime: string; // HH:MM format (24-hour)
+  autoSyncScheduleDays: number[]; // 0-6 (Sunday-Saturday)
 }
 
 interface SettingsContextType {
@@ -32,6 +39,11 @@ const defaultSettings: Settings = {
   density: "comfortable",
   fontSizeGlobal: 100, // 100% = default size
   fontSizeEditor: 100, // 100% = default size
+  autoSyncEnabled: false,
+  autoSyncInterval: 30, // 30 minutes default
+  autoSyncScheduleEnabled: false,
+  autoSyncScheduleTime: "17:00", // 5:00 PM default
+  autoSyncScheduleDays: [0, 1, 2, 3, 4, 5, 6], // Every day default
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

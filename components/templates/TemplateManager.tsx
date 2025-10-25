@@ -33,7 +33,9 @@ import { FileEdit, Plus, Edit, Trash2, FileText } from "lucide-react";
 import { NoteType } from "@/lib/notes/noteManager";
 
 export function TemplateManager() {
-  const { dirHandle, passphrase } = useRepo();
+  // TODO: This component needs to be updated to use repoPath instead of dirHandle
+  const { passphrase } = useRepo();
+  const dirHandle = null; // Temporarily disabled until refactored to use repoPath
   const [open, setOpen] = useState(false);
   const [customTemplates, setCustomTemplates] = useState<NoteTemplate[]>([]);
   const [editingTemplate, setEditingTemplate] = useState<NoteTemplate | null>(null);

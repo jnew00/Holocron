@@ -90,7 +90,7 @@ export function CodeBlockComponent({
               <Copy className="h-4 w-4" />
             )}
           </Button>
-          <NodeViewContent as="code" />
+          <NodeViewContent as="div" />
         </pre>
       </NodeViewWrapper>
     );
@@ -134,7 +134,7 @@ export function CodeBlockComponent({
         </Button>
       </div>
       <pre className="rounded-t-none">
-        <NodeViewContent as="code" />
+        <NodeViewContent as="div" />
       </pre>
     </NodeViewWrapper>
   );

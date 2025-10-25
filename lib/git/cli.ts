@@ -58,7 +58,7 @@ class FSAccessFS {
 
     const fileHandle = await current.getFileHandle(parts[parts.length - 1], { create: true });
     const writable = await fileHandle.createWritable();
-    await writable.write(data);
+    await writable.write(data as BufferSource);
     await writable.close();
   }
 
@@ -186,6 +186,7 @@ export async function getStatus(dirHandle: FileSystemDirectoryHandle): Promise<G
     modified: 0,
     untracked: 0,
     hasChanges: false,
+    files: [],
   };
 }
 

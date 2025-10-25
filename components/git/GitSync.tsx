@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRepo } from "@/contexts/RepoContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
   ArrowDownCircle,
   Plus,
   Trash2,
+  Clock,
 } from "lucide-react";
 import {
   getStatus,
@@ -44,6 +46,7 @@ import {
 
 export function GitSync() {
   const { repoPath, passphrase } = useRepo();
+  const { settings } = useSettings();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -56,6 +59,8 @@ export function GitSync() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [conflictedFiles, setConflictedFiles] = useState<string[]>([]);
+  const [nextSyncTime, setNextSyncTime] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
   const loadGitConfig = async () => {
     if (!repoPath) return;
@@ -172,6 +177,39 @@ export function GitSync() {
     }
   };
 
+  const handleSyncAll = async () => {
+    if (!repoPath || !commitMessage.trim()) return;
+
+    setWorking(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Step 1: Commit (which includes add and encrypt)
+      setSuccess("Encrypting and committing changes...");
+      await commit(repoPath, {
+        message: commitMessage,
+        author: {
+          name: authorName,
+          email: authorEmail,
+        },
+        passphrase: passphrase || undefined,
+      });
+
+      // Step 2: Push
+      setSuccess("Pushing to remote...");
+      await push(repoPath, remote);
+
+      setSuccess("All changes synced successfully!");
+      setCommitMessage("");
+      await checkGitStatus();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const handlePull = async () => {
     if (!repoPath) return;
 
@@ -263,6 +301,99 @@ export function GitSync() {
       loadBranches();
     }
   };
+
+  // Calculate next sync time
+  useEffect(() => {
+    const calculateNextSync = () => {
+      const now = new Date();
+      setCurrentTime(now);
+
+      let nextIntervalSync: Date | null = null;
+      let nextScheduledSync: Date | null = null;
+
+      // Calculate next interval sync
+      if (settings.autoSyncEnabled) {
+        nextIntervalSync = new Date(now.getTime() + settings.autoSyncInterval * 60 * 1000);
+      }
+
+      // Calculate next scheduled sync
+      if (settings.autoSyncScheduleEnabled && settings.autoSyncScheduleDays.length > 0) {
+        const [hours, minutes] = settings.autoSyncScheduleTime.split(":").map(Number);
+
+        // Start with today
+        let candidate = new Date();
+        candidate.setHours(hours, minutes, 0, 0);
+
+        // If today's time has passed, start from tomorrow
+        if (candidate <= now) {
+          candidate.setDate(candidate.getDate() + 1);
+        }
+
+        // Find next valid day
+        let attempts = 0;
+        while (!settings.autoSyncScheduleDays.includes(candidate.getDay()) && attempts < 7) {
+          candidate.setDate(candidate.getDate() + 1);
+          attempts++;
+        }
+
+        if (attempts < 7) {
+          nextScheduledSync = candidate;
+        }
+      }
+
+      // Determine which sync comes first
+      let nextSync: Date | null = null;
+      let syncType = "";
+
+      if (nextIntervalSync && nextScheduledSync) {
+        if (nextIntervalSync < nextScheduledSync) {
+          nextSync = nextIntervalSync;
+          syncType = "interval";
+        } else {
+          nextSync = nextScheduledSync;
+          syncType = "scheduled";
+        }
+      } else if (nextIntervalSync) {
+        nextSync = nextIntervalSync;
+        syncType = "interval";
+      } else if (nextScheduledSync) {
+        nextSync = nextScheduledSync;
+        syncType = "scheduled";
+      }
+
+      if (nextSync) {
+        const timeUntil = nextSync.getTime() - now.getTime();
+        const minutesUntil = Math.floor(timeUntil / 60000);
+        const hoursUntil = Math.floor(minutesUntil / 60);
+        const daysUntil = Math.floor(hoursUntil / 24);
+
+        let timeStr = "";
+        if (daysUntil > 0) {
+          timeStr = `in ${daysUntil} day${daysUntil > 1 ? "s" : ""}`;
+        } else if (hoursUntil > 0) {
+          const remainingMinutes = minutesUntil % 60;
+          timeStr = `in ${hoursUntil}h ${remainingMinutes}m`;
+        } else if (minutesUntil > 0) {
+          timeStr = `in ${minutesUntil} minute${minutesUntil > 1 ? "s" : ""}`;
+        } else {
+          timeStr = "soon";
+        }
+
+        const dateStr = nextSync.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        setNextSyncTime(`${timeStr} (${dateStr})`);
+      } else {
+        setNextSyncTime("");
+      }
+    };
+
+    if (open && (settings.autoSyncEnabled || settings.autoSyncScheduleEnabled)) {
+      calculateNextSync();
+      const interval = setInterval(calculateNextSync, 30000); // Update every 30 seconds
+      return () => clearInterval(interval);
+    } else {
+      setNextSyncTime("");
+    }
+  }, [open, settings.autoSyncEnabled, settings.autoSyncInterval, settings.autoSyncScheduleEnabled, settings.autoSyncScheduleTime, settings.autoSyncScheduleDays]);
 
   // Poll git status every 30 seconds when not in dialog
   useEffect(() => {
@@ -370,6 +501,38 @@ export function GitSync() {
             </div>
           )}
 
+          {/* Auto-Sync Status */}
+          {(settings.autoSyncEnabled || settings.autoSyncScheduleEnabled) && (
+            <div className="flex items-center gap-2 p-3 bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-lg border border-blue-500/20">
+              <Clock className="h-4 w-4" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Auto-Sync Enabled</p>
+                <div className="text-xs opacity-75 space-y-1">
+                  {settings.autoSyncEnabled && (
+                    <p>
+                      Interval: Every {settings.autoSyncInterval} minute{settings.autoSyncInterval !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                  {settings.autoSyncScheduleEnabled && (
+                    <p>
+                      Scheduled: Daily at {settings.autoSyncScheduleTime} on{" "}
+                      {settings.autoSyncScheduleDays.length === 7
+                        ? "all days"
+                        : settings.autoSyncScheduleDays
+                            .map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d])
+                            .join(", ")}
+                    </p>
+                  )}
+                  {nextSyncTime && (
+                    <p className="font-medium text-blue-800 dark:text-blue-300 mt-1">
+                      Next sync: {nextSyncTime}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {status && (
             <Tabs defaultValue="sync" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -385,9 +548,14 @@ export function GitSync() {
                   </div>
                 )}
 
-                {/* Commit Section */}
-                <div className="space-y-2">
-                  <Label htmlFor="commit-message">Commit Message</Label>
+                {/* Main Sync All Section */}
+                <div className="space-y-2 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                  <Label htmlFor="commit-message" className="text-base font-semibold">
+                    Sync All Changes
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Add, encrypt, commit, and push all changes with one click
+                  </p>
                   <Textarea
                     id="commit-message"
                     value={commitMessage}
@@ -396,33 +564,53 @@ export function GitSync() {
                     className="min-h-[80px]"
                   />
                   <Button
-                    onClick={handleCommit}
+                    onClick={handleSyncAll}
                     disabled={working || !commitMessage.trim() || !status.hasChanges}
-                    className="w-full"
+                    className="w-full h-12 text-base"
+                    size="lg"
                   >
-                    <GitCommit className="h-4 w-4 mr-2" />
-                    {working ? "Committing..." : "Commit All Changes"}
+                    <ArrowUpCircle className="h-5 w-5 mr-2" />
+                    {working ? "Syncing..." : "Sync All"}
                   </Button>
                 </div>
 
-                {/* Push/Pull Section */}
-                <div className="space-y-2">
-                  <Label htmlFor="remote">Remote</Label>
-                  <Input
-                    id="remote"
-                    value={remote}
-                    onChange={(e) => setRemote(e.target.value)}
-                    placeholder="origin"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button onClick={handlePull} disabled={working} variant="outline">
-                      <Download className="h-4 w-4 mr-2" />
-                      Pull
+                {/* Individual Steps Section */}
+                <div className="pt-2">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Individual Steps</p>
+
+                  {/* Commit Section */}
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="commit-only" className="text-sm">Commit Only</Label>
+                    <Button
+                      onClick={handleCommit}
+                      disabled={working || !commitMessage.trim() || !status.hasChanges}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <GitCommit className="h-4 w-4 mr-2" />
+                      {working ? "Committing..." : "Commit Changes"}
                     </Button>
-                    <Button onClick={handlePush} disabled={working} variant="outline">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Push
-                    </Button>
+                  </div>
+
+                  {/* Push/Pull Section */}
+                  <div className="space-y-2">
+                    <Label htmlFor="remote" className="text-sm">Push/Pull</Label>
+                    <Input
+                      id="remote"
+                      value={remote}
+                      onChange={(e) => setRemote(e.target.value)}
+                      placeholder="origin"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={handlePull} disabled={working} variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Pull
+                      </Button>
+                      <Button onClick={handlePush} disabled={working} variant="outline">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Push
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </TabsContent>

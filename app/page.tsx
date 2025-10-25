@@ -1,25 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Image from "next/image";
 import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
-import { TemplateSelector } from "@/components/templates/TemplateSelector";
-import { TemplateManager } from "@/components/templates/TemplateManager";
+import { AppHeader } from "@/components/layout/AppHeader";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
-import { BoardManagement } from "@/components/kanban/BoardManagement";
 import { NotesSidebar } from "@/components/notes/NotesSidebar";
-import { SettingsDialog } from "@/components/settings/SettingsDialog";
-import { GitSync } from "@/components/git/GitSync";
 import { KanbanSyntaxHelp } from "@/components/kanban/KanbanSyntaxHelp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import {
   FileText,
   Kanban,
-  Save,
-  PanelLeftClose,
   PanelLeftOpen,
   Maximize2,
   Minimize2,
@@ -103,78 +95,15 @@ export default function Home() {
   // Main editor UI
   return (
     <div className={`flex flex-col h-screen ${isFullscreen ? "fixed inset-0 z-50 bg-background" : ""}`}>
-      {/* Global Header */}
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-3 relative">
-              <div
-                className="absolute inset-0 -inset-x-4 -inset-y-2 opacity-60 blur-xl pointer-events-none"
-                style={{
-                  background: "linear-gradient(90deg, rgba(20,184,166,0.4) 0%, rgba(59,130,246,0.5) 50%, rgba(168,85,247,0.4) 100%)"
-                }}
-              />
-              <div className="relative group" style={{ perspective: "1000px" }}>
-                <Image
-                  src="/tesseract.png"
-                  alt="Holocron"
-                  width={48}
-                  height={48}
-                  className="object-contain brightness-110 contrast-110 transition-all duration-700"
-                  style={{
-                    filter: "drop-shadow(-4px 0 8px rgba(20,184,166,0.6)) drop-shadow(4px 0 8px rgba(59,130,246,0.5)) brightness(1.1) contrast(1.1)",
-                    transform: "rotateY(0deg)",
-                    transition: "all 0.7s ease-in-out"
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.transform = "rotateY(180deg)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "rotateY(0deg)";
-                  }}
-                />
-              </div>
-              <h1
-                className="text-4xl font-bold tracking-tight font-rajdhani relative"
-                style={{
-                  background: "linear-gradient(90deg, #14b8a6 0%, #3b82f6 50%, #a855f7 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                  filter: "drop-shadow(0 0 8px rgba(20,184,166,0.5))"
-                }}
-              >
-                Holocron
-              </h1>
-            </div>
-            {noteOps.currentNote && !isFullscreen && (
-              <>
-                <Separator orientation="vertical" className="h-6" />
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{noteOps.currentNote.title}</span>
-                  {noteOps.isSaving && (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Save className="h-3 w-3 animate-pulse" />
-                      Saving...
-                    </span>
-                  )}
-                  {!noteOps.isSaving && noteOps.lastSaved && (
-                    <span className="text-xs text-muted-foreground">
-                      Saved {noteOps.lastSaved.toLocaleTimeString()}
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <BoardManagement boards={kanbanBoards} onBoardsChange={() => setRefreshTrigger(prev => prev + 1)} />
-            <TemplateSelector onSelectTemplate={handleTemplateSelect} />
-            <GitSync />
-            <SettingsDialog />
-          </div>
-        </div>
-      </header>
+      <AppHeader
+        currentNote={noteOps.currentNote}
+        isSaving={noteOps.isSaving}
+        lastSaved={noteOps.lastSaved}
+        isFullscreen={isFullscreen}
+        kanbanBoards={kanbanBoards}
+        onBoardsChange={() => setRefreshTrigger(prev => prev + 1)}
+        onTemplateSelect={handleTemplateSelect}
+      />
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">

@@ -48,7 +48,7 @@ export const EncryptionTab = React.memo(function EncryptionTab({
           </div>
           <p className="text-xs text-muted-foreground">
             This passphrase is used to encrypt your notes before committing to Git.
-            It's stored encrypted on your machine using a machine-specific key.
+            Keep it safe - you'll need it to access your notes on any device.
           </p>
         </div>
 

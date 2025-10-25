@@ -6,6 +6,7 @@ import { SecureString } from "@/lib/security/SecureString";
 interface RepoContextType {
   repoPath: string | null;
   isUnlocked: boolean;
+  isLoading: boolean;
   passphrase: string | null; // DEPRECATED: Use getPassphrase() instead
   getPassphrase: () => string | null; // Secure accessor
   setRepo: (path: string, passphrase: string) => void;
@@ -20,14 +21,17 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   // Store passphrase as SecureString to prevent logging
   const [securePassphrase, setSecurePassphrase] = useState<SecureString | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load repo path and passphrase from config on mount
   useEffect(() => {
     const loadConfig = async () => {
+      setIsLoading(true);
       const savedPath = localStorage.getItem("localnote-repo-path");
 
       if (!savedPath) {
         // No saved path - user needs to go through setup
+        setIsLoading(false);
         return;
       }
 
@@ -50,6 +54,8 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         // If config fails to load, user will need to unlock manually
         // Don't log the error details to avoid leaking information
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -87,6 +93,7 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
       value={{
         repoPath,
         isUnlocked,
+        isLoading,
         // DEPRECATED: Maintained for backward compatibility - use getPassphrase() instead
         passphrase: securePassphrase?.reveal() ?? null,
         getPassphrase,

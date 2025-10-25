@@ -12,7 +12,7 @@ import { usePageHandlers } from "@/hooks/usePageHandlers";
 import { useKanbanSync } from "@/hooks/useKanbanSync";
 
 export default function Home() {
-  const { isUnlocked, repoPath, passphrase } = useRepo();
+  const { isUnlocked, repoPath, passphrase, isLoading } = useRepo();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -56,6 +56,18 @@ export default function Home() {
     activeTab,
     onSync: handleBoardSync,
   });
+
+  // Show loading state while checking for saved config
+  if (isLoading) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </main>
+    );
+  }
 
   // Show setup wizard if no repo is selected
   if (!repoPath || !isUnlocked) {

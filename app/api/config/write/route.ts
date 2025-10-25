@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { encryptConfig } from "@/lib/crypto/unified";
+import { validateConfig, safeParseConfig } from "@/lib/schema/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,14 +16,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate config structure before writing
+    const validationResult = safeParseConfig(config);
+    if (!validationResult.success) {
+      console.error("Config validation failed:", validationResult.error);
+      return NextResponse.json({
+        error: "Invalid config structure",
+        validationErrors: validationResult.error?.issues || [],
+      }, { status: 422 });
+    }
+
     const configDir = path.join(repoPath, ".localnote");
     const configPath = path.join(configDir, "config.json.enc");
 
     // Ensure directory exists
     await fs.mkdir(configDir, { recursive: true });
 
-    // Encrypt config using unified crypto (fixed salt for cross-device compatibility)
-    const configJson = JSON.stringify(config, null, 2);
+    // Encrypt validated config using unified crypto (fixed salt for cross-device compatibility)
+    const configJson = JSON.stringify(validationResult.data, null, 2);
     const encryptedData = await encryptConfig(configJson, passphrase);
 
     // Write encrypted config

@@ -164,6 +164,9 @@ importers:
       tiptap-markdown:
         specifier: ^0.9.0
         version: 0.9.0(@tiptap/core@3.8.0(@tiptap/pm@3.8.0))
+      zod:
+        specifier: ^4.1.12
+        version: 4.1.12
     devDependencies:
       '@tailwindcss/typography':
         specifier: ^0.5.19

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { decryptConfig } from "@/lib/crypto/unified";
+import { validateConfig, safeParseConfig } from "@/lib/schema/config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,11 +26,21 @@ export async function GET(request: NextRequest) {
       if (passphrase) {
         try {
           const decryptedJson = await decryptConfig(encryptedData, passphrase);
-          const config = JSON.parse(decryptedJson);
+          const rawConfig = JSON.parse(decryptedJson);
+
+          // Validate config structure
+          const validationResult = safeParseConfig(rawConfig);
+          if (!validationResult.success) {
+            console.error("Config validation failed:", validationResult.error);
+            return NextResponse.json({
+              error: "Invalid config structure",
+              validationErrors: validationResult.error?.issues || [],
+            }, { status: 422 });
+          }
 
           return NextResponse.json({
             success: true,
-            config,
+            config: validationResult.data,
           });
         } catch (decryptError) {
           // Decryption failed - wrong passphrase

@@ -13,7 +13,9 @@ export function AutoSyncManager() {
   const { repoPath, passphrase, isUnlocked } = useRepo();
   const { settings } = useSettings();
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const scheduleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSyncAttemptRef = useRef<Date | null>(null);
+  const lastScheduledSyncDateRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Clear any existing timer
@@ -125,6 +127,133 @@ export function AutoSyncManager() {
   }, [
     settings.autoSyncEnabled,
     settings.autoSyncInterval,
+    repoPath,
+    passphrase,
+    isUnlocked,
+  ]);
+
+  // Set up scheduled sync (time-based)
+  useEffect(() => {
+    // Clear any existing schedule timer
+    if (scheduleTimerRef.current) {
+      clearInterval(scheduleTimerRef.current);
+      scheduleTimerRef.current = null;
+    }
+
+    // Only set up scheduled sync if enabled and repo is configured
+    if (
+      !settings.autoSyncScheduleEnabled ||
+      !repoPath ||
+      !passphrase ||
+      !isUnlocked ||
+      settings.autoSyncScheduleDays.length === 0
+    ) {
+      return;
+    }
+
+    console.log(
+      `[AutoSync] Setting up scheduled sync at ${settings.autoSyncScheduleTime} on days: ${settings.autoSyncScheduleDays.join(", ")}`
+    );
+
+    const checkScheduledSync = async () => {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(
+        now.getMinutes()
+      ).padStart(2, "0")}`;
+      const currentDate = now.toDateString();
+
+      // Check if today is in the selected days
+      if (!settings.autoSyncScheduleDays.includes(currentDay)) {
+        return;
+      }
+
+      // Check if it's the scheduled time
+      if (currentTime !== settings.autoSyncScheduleTime) {
+        return;
+      }
+
+      // Check if we already synced today at this time
+      if (lastScheduledSyncDateRef.current === currentDate) {
+        console.log("[AutoSync] Already synced today at scheduled time");
+        return;
+      }
+
+      console.log("[AutoSync] Running scheduled sync...");
+      lastScheduledSyncDateRef.current = currentDate;
+
+      try {
+        // Check if there are changes to sync
+        const status = await getStatus(repoPath);
+        if (!status.hasChanges) {
+          console.log("[AutoSync] No changes to sync");
+          return;
+        }
+
+        // Get git config for commit author
+        const config = await getConfig(repoPath);
+
+        // Auto-generate commit message
+        const allChangedFiles = [
+          ...(status.files?.added || []),
+          ...(status.files?.modified || []),
+          ...(status.files?.deleted || []),
+        ];
+
+        const noteTitles = allChangedFiles
+          .filter((file) => file.endsWith(".md"))
+          .map((file) => {
+            const fileName = file.split("/").pop()?.replace(".md", "") || "";
+            return fileName
+              .split("-")
+              .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+          })
+          .filter(Boolean);
+
+        const commitMessage =
+          noteTitles.length > 0
+            ? `Scheduled sync: ${noteTitles.length} note${noteTitles.length > 1 ? "s" : ""} updated`
+            : "Scheduled sync: Updates";
+
+        // Commit
+        console.log("[AutoSync] Committing changes...");
+        await commit(repoPath, {
+          message: commitMessage,
+          author: {
+            name: config.name,
+            email: config.email,
+          },
+          passphrase: passphrase,
+        });
+
+        // Push
+        console.log("[AutoSync] Pushing to remote...");
+        await push(repoPath, "origin");
+
+        console.log("[AutoSync] Scheduled sync completed successfully");
+      } catch (error: any) {
+        console.error("[AutoSync] Scheduled sync failed:", error.message);
+      }
+    };
+
+    // Check every minute if it's time to run scheduled sync
+    scheduleTimerRef.current = setInterval(checkScheduledSync, 60000);
+
+    // Run check immediately
+    checkScheduledSync();
+
+    // Cleanup
+    return () => {
+      if (scheduleTimerRef.current) {
+        clearInterval(scheduleTimerRef.current);
+        scheduleTimerRef.current = null;
+      }
+    };
+  }, [
+    settings.autoSyncScheduleEnabled,
+    settings.autoSyncScheduleTime,
+    settings.autoSyncScheduleDays,
     repoPath,
     passphrase,
     isUnlocked,

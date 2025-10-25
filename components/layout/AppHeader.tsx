@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
 import { BoardManagement } from "@/components/kanban/BoardManagement";
@@ -22,7 +23,7 @@ interface AppHeaderProps {
   onTemplateSelect: (template: NoteTemplate) => void;
 }
 
-export function AppHeader({
+export const AppHeader = memo(function AppHeader({
   currentNote,
   isSaving,
   lastSaved,
@@ -104,4 +105,4 @@ export function AppHeader({
       </div>
     </header>
   );
-}
+});

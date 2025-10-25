@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { KanbanSyntaxHelp } from "@/components/kanban/KanbanSyntaxHelp";
 import { TabsContent } from "@/components/ui/tabs";
@@ -11,7 +12,7 @@ interface KanbanTabContentProps {
   syncTrigger: number;
 }
 
-export function KanbanTabContent({
+export const KanbanTabContent = memo(function KanbanTabContent({
   boards,
   onBoardUpdate,
   syncTrigger,
@@ -39,4 +40,4 @@ export function KanbanTabContent({
       ))}
     </>
   );
-}
+});

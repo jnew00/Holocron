@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRepo } from "@/contexts/RepoContext";
-import { NoteMetadata, listNotes, deleteNote } from "@/lib/notes/noteManager";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -17,14 +16,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Search, Archive, Trash2, ArchiveRestore } from "lucide-react";
+import { FileText, Search, Archive, Trash2, ArchiveRestore, PanelLeftClose } from "lucide-react";
+
+interface NoteMetadata {
+  name: string;
+  path: string;
+  title: string;
+  modified: string;
+  size: number;
+}
 
 interface NotesSidebarProps {
   currentNoteId: string | null;
-  onSelectNote: (noteId: string) => void;
+  onSelectNote: (notePath: string) => void;
   onNewNote: () => void;
-  onArchiveNote: (noteId: string) => void;
-  onDeleteNote: (noteId: string) => void;
+  onArchiveNote: (notePath: string) => void;
+  onDeleteNote: (notePath: string) => void;
+  onCollapse?: () => void;
   refreshTrigger?: number;
 }
 
@@ -34,9 +42,10 @@ export function NotesSidebar({
   onNewNote,
   onArchiveNote,
   onDeleteNote,
+  onCollapse,
   refreshTrigger,
 }: NotesSidebarProps) {
-  const { dirHandle, passphrase } = useRepo();
+  const { repoPath } = useRepo();
   const [notes, setNotes] = useState<NoteMetadata[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -48,12 +57,42 @@ export function NotesSidebar({
   const sidebarRef = useRef<HTMLDivElement>(null);
 
   const loadNotes = async () => {
-    if (!dirHandle || !passphrase) return;
+    if (!repoPath) return;
 
     setLoading(true);
     try {
-      const loadedNotes = await listNotes(dirHandle, passphrase, showArchived);
-      setNotes(loadedNotes);
+      const response = await fetch(
+        `/api/notes/list?repoPath=${encodeURIComponent(repoPath)}`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Transform API response to match our NoteMetadata format
+        const loadedNotes: NoteMetadata[] = data.notes
+          .filter((note: any) => {
+            const isArchived = note.path.startsWith("archive/");
+            return showArchived ? isArchived : !isArchived;
+          })
+          .map((note: any) => {
+            // Extract title from filename
+            const fileName = note.name.replace(".md", "");
+            const title = fileName
+              .split("-")
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+
+            return {
+              name: note.name,
+              path: note.path,
+              title,
+              modified: note.modified,
+              size: note.size,
+            };
+          });
+
+        setNotes(loadedNotes);
+      }
     } catch (error) {
       console.error("Failed to load notes:", error);
     } finally {
@@ -63,7 +102,7 @@ export function NotesSidebar({
 
   useEffect(() => {
     loadNotes();
-  }, [dirHandle, passphrase, showArchived, refreshTrigger]);
+  }, [repoPath, showArchived, refreshTrigger]);
 
   // Handle sidebar resizing
   useEffect(() => {
@@ -162,7 +201,7 @@ export function NotesSidebar({
     };
 
     notes.forEach((note) => {
-      const noteDate = new Date(note.updatedAt);
+      const noteDate = new Date(note.modified);
       if (noteDate >= today) {
         groups.Today.push(note);
       } else if (noteDate >= yesterday) {
@@ -216,6 +255,17 @@ export function NotesSidebar({
       >
         <div className="p-4 border-b">
           <div className="flex items-center gap-2 mb-3">
+            {onCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onCollapse}
+                title="Hide sidebar"
+                className="h-8 w-8 p-0"
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            )}
             <h2 className="font-semibold text-lg">Notes</h2>
             <Button size="sm" onClick={onNewNote} className="ml-auto">
               <FileText className="h-4 w-4 mr-1" />
@@ -294,13 +344,15 @@ export function NotesSidebar({
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2">
                       {category}
                     </h3>
-                    {categoryNotes.map((note, index) => (
-                      <div key={`${sortBy}-${category}-${categoryIndex}-${index}-${note.id}`}>
+                    {categoryNotes.map((note, index) => {
+                      const isArchived = note.path.startsWith("archive/");
+                      return (
+                      <div key={`${sortBy}-${category}-${categoryIndex}-${index}-${note.path}`}>
                         <div
                           className={`p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
-                            currentNoteId === note.id ? "bg-muted" : ""
+                            currentNoteId === note.path ? "bg-muted" : ""
                           }`}
-                          onClick={() => onSelectNote(note.id)}
+                          onClick={() => onSelectNote(note.path)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
@@ -308,7 +360,7 @@ export function NotesSidebar({
                                 {note.title || "Untitled"}
                               </h3>
                               <p className="text-xs text-muted-foreground">
-                                {formatDate(note.updatedAt)}
+                                {formatDate(note.modified)}
                               </p>
                             </div>
                             <div className="flex gap-1">
@@ -318,12 +370,12 @@ export function NotesSidebar({
                                 className="h-7 w-7 p-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onArchiveNote(note.id);
+                                  onArchiveNote(note.path);
                                   loadNotes();
                                 }}
-                                title={note.archived ? "Unarchive" : "Archive"}
+                                title={isArchived ? "Unarchive" : "Archive"}
                               >
-                                {note.archived ? (
+                                {isArchived ? (
                                   <ArchiveRestore className="h-3 w-3" />
                                 ) : (
                                   <Archive className="h-3 w-3" />
@@ -335,7 +387,7 @@ export function NotesSidebar({
                                 className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setDeleteConfirmNote(note.id);
+                                  setDeleteConfirmNote(note.path);
                                 }}
                                 title="Delete"
                               >
@@ -343,7 +395,7 @@ export function NotesSidebar({
                               </Button>
                             </div>
                           </div>
-                          {note.archived && (
+                          {isArchived && (
                             <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                               Archived
                             </span>
@@ -353,7 +405,8 @@ export function NotesSidebar({
                           <Separator className="my-1" />
                         )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })}

@@ -12,6 +12,12 @@ export interface GitStatus {
   ahead: number;
   behind: number;
   hasChanges: boolean;
+  files?: {
+    modified: string[];
+    added: string[];
+    deleted: string[];
+    untracked: string[];
+  };
 }
 
 export interface GitBranch {

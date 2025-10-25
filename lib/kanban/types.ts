@@ -23,6 +23,7 @@ export interface KanbanColumn {
 export interface KanbanBoard {
   id: string;
   name: string;
+  icon?: string; // Base64 encoded image or emoji
   columns: KanbanColumn[];
   createdAt: string;
   updatedAt: string;

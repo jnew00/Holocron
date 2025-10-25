@@ -76,6 +76,39 @@ export function GitSync() {
     try {
       const gitStatus = await getStatus(repoPath);
       setStatus(gitStatus);
+
+      // Auto-populate commit message if empty and there are changes
+      if (!commitMessage && gitStatus.hasChanges && gitStatus.files) {
+        const allChangedFiles = [
+          ...gitStatus.files.added,
+          ...gitStatus.files.modified,
+          ...gitStatus.files.deleted,
+        ];
+
+        if (allChangedFiles.length > 0) {
+          // Extract note titles from file paths
+          const noteTitles = allChangedFiles
+            .filter(file => file.endsWith('.md'))
+            .map(file => {
+              // Extract filename without .md extension
+              const fileName = file.split('/').pop()?.replace('.md', '') || '';
+              // Convert slug to readable title
+              return fileName
+                .split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            })
+            .filter(Boolean);
+
+          if (noteTitles.length > 0) {
+            const action = gitStatus.files.added.length > 0 ? 'Add' : 'Update';
+            const message = noteTitles.length === 1
+              ? `${action} ${noteTitles[0]}`
+              : `${action} ${noteTitles.length} notes: ${noteTitles.slice(0, 3).join(', ')}${noteTitles.length > 3 ? '...' : ''}`;
+            setCommitMessage(message);
+          }
+        }
+      }
     } catch (err: any) {
       console.error("Git status check failed:", err);
       setError(err.message);
@@ -231,11 +264,38 @@ export function GitSync() {
     }
   };
 
+  // Poll git status every 30 seconds when not in dialog
+  useEffect(() => {
+    if (!open && repoPath) {
+      checkGitStatus();
+      const interval = setInterval(checkGitStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [open, repoPath]);
+
+  const hasChanges = status && status.hasChanges;
+  const needsPush = status && status.ahead > 0;
+
+  // Extract folder name from repoPath
+  const folderName = repoPath ? repoPath.split('/').pop() : null;
+
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" title="Git Sync">
-          <GitBranchIcon className="h-4 w-4" />
+        <Button variant="ghost" size="sm" title="Git Sync" className="relative">
+          <GitBranchIcon className="h-4 w-4 mr-1" />
+          <div className="flex items-center gap-1 text-xs font-mono">
+            {folderName && (
+              <>
+                <span className="text-muted-foreground">{folderName}</span>
+                {status?.branch && <span className="text-muted-foreground">/</span>}
+              </>
+            )}
+            {status?.branch && <span>{status.branch}</span>}
+          </div>
+          {(hasChanges || needsPush) && (
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 bg-amber-500 rounded-full animate-pulse" />
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -332,7 +392,7 @@ export function GitSync() {
                     id="commit-message"
                     value={commitMessage}
                     onChange={(e) => setCommitMessage(e.target.value)}
-                    placeholder="Update notes..."
+                    placeholder="Commit message (auto-populated with changed notes)..."
                     className="min-h-[80px]"
                   />
                   <Button

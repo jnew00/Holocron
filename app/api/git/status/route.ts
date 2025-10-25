@@ -42,20 +42,26 @@ export async function POST(request: NextRequest) {
 
     // Parse status
     const lines = status.trim().split("\n").filter(Boolean);
-    const modified = lines.filter((l) => l.startsWith(" M")).length;
-    const added = lines.filter((l) => l.startsWith("A ")).length;
-    const deleted = lines.filter((l) => l.startsWith(" D")).length;
-    const untracked = lines.filter((l) => l.startsWith("??")).length;
+    const modifiedFiles = lines.filter((l) => l.startsWith(" M")).map((l) => l.slice(3));
+    const addedFiles = lines.filter((l) => l.startsWith("A ") || l.startsWith("??")).map((l) => l.slice(3));
+    const deletedFiles = lines.filter((l) => l.startsWith(" D")).map((l) => l.slice(3));
+    const untrackedFiles = lines.filter((l) => l.startsWith("??")).map((l) => l.slice(3));
 
     return NextResponse.json({
       branch: branch.trim(),
-      modified,
-      added,
-      deleted,
-      untracked,
+      modified: modifiedFiles.length,
+      added: addedFiles.length,
+      deleted: deletedFiles.length,
+      untracked: untrackedFiles.length,
       ahead,
       behind,
       hasChanges: lines.length > 0,
+      files: {
+        modified: modifiedFiles,
+        added: addedFiles,
+        deleted: deletedFiles,
+        untracked: untrackedFiles,
+      },
     });
   } catch (error: any) {
     return NextResponse.json(

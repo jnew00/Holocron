@@ -27,26 +27,25 @@ export function KanbanSyntaxHelp() {
 
           <div className="space-y-2 text-xs font-mono bg-muted p-3 rounded">
             <div>
-              <div className="text-muted-foreground">Add to Backlog:</div>
-              <code className="text-foreground">- [ ] Task description @kanban</code>
+              <div className="text-muted-foreground font-semibold mb-1">Default Board:</div>
+              <code className="text-foreground block">- [ ] Task @kanban</code>
+              <code className="text-foreground block">- [ ] Task @kanban:doing</code>
             </div>
-            <div>
-              <div className="text-muted-foreground mt-2">Add to specific column:</div>
-              <code className="text-foreground">- [ ] Task @kanban:doing</code>
+            <div className="mt-3">
+              <div className="text-muted-foreground font-semibold mb-1">Specific Board:</div>
+              <code className="text-foreground block">- [ ] Task @jira</code>
+              <code className="text-foreground block">- [ ] Task @default:review</code>
             </div>
-            <div>
-              <div className="text-muted-foreground mt-2">Mark as complete:</div>
-              <code className="text-foreground">- [x] Done task @kanban</code>
-            </div>
-            <div>
-              <div className="text-muted-foreground mt-2">Alternative syntax:</div>
-              <code className="text-foreground">- [ ] Task #kanban</code>
+            <div className="mt-3">
+              <div className="text-muted-foreground font-semibold mb-1">Mark Complete:</div>
+              <code className="text-foreground block">- [x] Done task @kanban</code>
             </div>
           </div>
 
           <div className="text-xs text-muted-foreground space-y-1">
-            <p><strong>Supported columns:</strong> backlog, doing, done</p>
-            <p><strong>Auto-sync:</strong> Tasks sync to Kanban board when you save the note</p>
+            <p><strong>Board IDs:</strong> Use the board ID shown in Board Management (e.g., @jira, @default)</p>
+            <p><strong>Columns:</strong> todo, doing, review, done (case-insensitive)</p>
+            <p><strong>Auto-sync:</strong> Tasks sync when you save the note</p>
           </div>
         </div>
       </PopoverContent>

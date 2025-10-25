@@ -15,11 +15,14 @@ import { Highlight } from "@tiptap/extension-highlight";
 import { Underline } from "@tiptap/extension-underline";
 import { TextAlign } from "@tiptap/extension-text-align";
 import { Link } from "@tiptap/extension-link";
+import { Mention } from "@tiptap/extension-mention";
 import { Markdown } from "tiptap-markdown";
 import { all, createLowlight } from "lowlight";
 import { useEffect, useRef } from "react";
 import { EditorToolbar } from "./EditorToolbar";
 import { CodeBlockComponent } from "./CodeBlockComponent";
+import { KanbanBoard } from "@/lib/kanban/types";
+import { createKanbanMentionSuggestion } from "@/lib/editor/kanbanMentionSuggestion";
 
 // Create a lowlight instance with all languages
 const lowlight = createLowlight(all);
@@ -29,6 +32,7 @@ interface TiptapEditorProps {
   onChange?: (markdown: string) => void;
   placeholder?: string;
   editable?: boolean;
+  kanbanBoards?: KanbanBoard[];
 }
 
 export function TiptapEditor({
@@ -36,6 +40,7 @@ export function TiptapEditor({
   onChange,
   placeholder = "Start writing...",
   editable = true,
+  kanbanBoards = [],
 }: TiptapEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
@@ -101,6 +106,18 @@ export function TiptapEditor({
           class: "text-primary underline cursor-pointer",
         },
       }),
+      Mention.configure({
+        HTMLAttributes: {
+          class: "mention text-primary font-medium",
+        },
+        suggestion: createKanbanMentionSuggestion(kanbanBoards),
+        renderHTML({ node }) {
+          return ['span', { class: 'mention' }, `@${node.attrs.id}`];
+        },
+        renderText({ node }) {
+          return `@${node.attrs.id}`;
+        },
+      }),
       Markdown.configure({
         html: true,
         transformPastedText: true,
@@ -123,7 +140,7 @@ export function TiptapEditor({
         onChange(markdown);
       }
     },
-  });
+  }, [kanbanBoards]); // Recreate editor when kanban boards change
 
   // Update editor content when prop changes
   useEffect(() => {

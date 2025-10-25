@@ -15,7 +15,14 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Settings as SettingsIcon, FolderGit2, Check } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Settings as SettingsIcon, FolderGit2, Check, Palette, Type, Monitor } from "lucide-react";
 
 export function SettingsDialog() {
   const { settings, updateSettings } = useSettings();
@@ -70,7 +77,7 @@ export function SettingsDialog() {
           <SettingsIcon className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -78,7 +85,154 @@ export function SettingsDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 overflow-y-auto flex-1">
+          {/* Appearance Settings */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Palette className="h-4 w-4" />
+              Appearance
+            </h3>
+            <div className="space-y-4">
+              {/* Theme Mode */}
+              <div className="space-y-2">
+                <Label htmlFor="theme-mode">Theme Mode</Label>
+                <Select
+                  value={settings.theme}
+                  onValueChange={(value: "light" | "dark" | "system") =>
+                    updateSettings({ theme: value })
+                  }
+                >
+                  <SelectTrigger id="theme-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="system">System</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Choose your preferred color scheme
+                </p>
+              </div>
+
+              {/* Accent Color */}
+              <div className="space-y-2">
+                <Label htmlFor="accent-color">Accent Color</Label>
+                <Select
+                  value={settings.accentColor}
+                  onValueChange={(value) => updateSettings({ accentColor: value })}
+                >
+                  <SelectTrigger id="accent-color">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blue">Blue</SelectItem>
+                    <SelectItem value="purple">Purple</SelectItem>
+                    <SelectItem value="green">Green</SelectItem>
+                    <SelectItem value="orange">Orange</SelectItem>
+                    <SelectItem value="red">Red</SelectItem>
+                    <SelectItem value="pink">Pink</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Primary color for buttons and highlights
+                </p>
+              </div>
+
+              {/* Density */}
+              <div className="space-y-2">
+                <Label htmlFor="density">Spacing</Label>
+                <Select
+                  value={settings.density}
+                  onValueChange={(value: "compact" | "comfortable" | "spacious") =>
+                    updateSettings({ density: value })
+                  }
+                >
+                  <SelectTrigger id="density">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="compact">Compact</SelectItem>
+                    <SelectItem value="comfortable">Comfortable</SelectItem>
+                    <SelectItem value="spacious">Spacious</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Control the spacing and padding throughout the UI
+                </p>
+              </div>
+
+              {/* UI Font */}
+              <div className="space-y-2">
+                <Label htmlFor="ui-font">UI Font</Label>
+                <Select
+                  value={settings.uiFont}
+                  onValueChange={(value) => updateSettings({ uiFont: value })}
+                >
+                  <SelectTrigger id="ui-font">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="system-ui">System UI</SelectItem>
+                    <SelectItem value="inter">Inter</SelectItem>
+                    <SelectItem value="roboto">Roboto</SelectItem>
+                    <SelectItem value="open-sans">Open Sans</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Font used for menus, buttons, and UI elements
+                </p>
+              </div>
+
+              {/* Editor Font */}
+              <div className="space-y-2">
+                <Label htmlFor="editor-font">Editor Font</Label>
+                <Select
+                  value={settings.editorFont}
+                  onValueChange={(value) => updateSettings({ editorFont: value })}
+                >
+                  <SelectTrigger id="editor-font">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mono">System Mono</SelectItem>
+                    <SelectItem value="fira-code">Fira Code</SelectItem>
+                    <SelectItem value="jetbrains-mono">JetBrains Mono</SelectItem>
+                    <SelectItem value="source-code-pro">Source Code Pro</SelectItem>
+                    <SelectItem value="cascadia-code">Cascadia Code</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Monospace font for the note editor
+                </p>
+              </div>
+
+              {/* Editor Theme */}
+              <div className="space-y-2">
+                <Label htmlFor="editor-theme">Editor Code Theme</Label>
+                <Select
+                  value={settings.editorTheme}
+                  onValueChange={(value: any) => updateSettings({ editorTheme: value })}
+                >
+                  <SelectTrigger id="editor-theme">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="github-light">GitHub Light</SelectItem>
+                    <SelectItem value="github-dark">GitHub Dark</SelectItem>
+                    <SelectItem value="monokai">Monokai</SelectItem>
+                    <SelectItem value="dracula">Dracula</SelectItem>
+                    <SelectItem value="nord">Nord</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Syntax highlighting theme for code blocks
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Passphrase Settings */}
           <div>
             <h3 className="text-sm font-semibold mb-3">Encryption Passphrase</h3>

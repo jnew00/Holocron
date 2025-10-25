@@ -13,9 +13,6 @@ import { NotesSidebar } from "@/components/notes/NotesSidebar";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { GitSync } from "@/components/git/GitSync";
 import { KanbanSyntaxHelp } from "@/components/kanban/KanbanSyntaxHelp";
-import { NoteTemplate } from "@/lib/templates/templates";
-import { KanbanBoard as KanbanBoardType } from "@/lib/kanban/types";
-import { addFrontmatter, extractFrontmatter, updateContent } from "@/lib/notes/frontmatter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -28,340 +25,70 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NoteRepository, KanbanRepository, RepositoryError } from "@/lib/repositories";
-
-// Note interface (matches old format)
-interface Note {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: string;
-  updatedAt: string;
-  path?: string; // Filesystem path relative to notes/
-  type?: string;
-}
+import { useNoteOperations } from "@/hooks/useNoteOperations";
+import { useKanbanBoards } from "@/hooks/useKanbanBoards";
+import { useAutoSave } from "@/hooks/useAutoSave";
 
 export default function Home() {
   const { isUnlocked, repoPath, passphrase } = useRepo();
-  const [currentNote, setCurrentNote] = useState<Note | null>(null);
-  const [markdown, setMarkdown] = useState("");
-  const [noteFrontmatter, setNoteFrontmatter] = useState<any>({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [kanbanBoards, setKanbanBoards] = useState<KanbanBoardType[]>([]);
   const [activeTab, setActiveTab] = useState("notes");
-  const [boardSyncTrigger, setBoardSyncTrigger] = useState(0); // Separate trigger for board sync
-
-  // Use ref to track current note for auto-save without triggering re-renders
-  const currentNoteRef = useRef<Note | null>(null);
-
-  // Keep ref in sync with currentNote
-  useEffect(() => {
-    currentNoteRef.current = currentNote;
-  }, [currentNote]);
+  const [boardSyncTrigger, setBoardSyncTrigger] = useState(0);
 
   // Track previous tab to know when we switch TO kanban
   const previousTabRef = useRef<string>("notes");
-  const previousTitleRef = useRef<string>("");
+
+  // Use custom hooks for note operations and kanban boards
+  const noteOps = useNoteOperations(repoPath);
+  const { kanbanBoards } = useKanbanBoards(repoPath, refreshTrigger);
+
+  // Auto-save hook
+  useAutoSave({
+    currentNote: noteOps.currentNote,
+    markdown: noteOps.markdown,
+    repoPath,
+    onSave: noteOps.handleSave,
+  });
 
   // Auto-sync kanban board when switching to a board tab
   useEffect(() => {
     if (activeTab.startsWith("kanban-") && previousTabRef.current !== activeTab) {
-      // Switched TO a kanban board - trigger sync
       setBoardSyncTrigger((prev) => prev + 1);
     }
-    // Update previous tab for next comparison
     previousTabRef.current = activeTab;
   }, [activeTab]);
 
-  // Helper function to generate note path
-  const generateNotePath = (title: string, createdAt: string): string => {
-    const date = new Date(createdAt);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    const slug =
-      title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, "")
-        .replace(/[\s_-]+/g, "-")
-        .replace(/^-+|-+$/g, "") || "untitled";
-    return `${year}/${month}/${day}/${slug}.md`;
-  };
-
-  // Helper to generate unique note ID
-  const generateNoteId = (): string => {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
-  };
-
-  // Load all kanban boards
-  useEffect(() => {
-    const loadBoards = async () => {
-      if (!repoPath) return;
-
-      console.log("Loading kanban boards...");
-
-      try {
-        const kanbanRepo = new KanbanRepository(repoPath);
-        const boards = await kanbanRepo.listBoards();
-        console.log("Total boards loaded:", boards.length);
-        setKanbanBoards(boards);
-      } catch (error) {
-        if (error instanceof RepositoryError) {
-          console.error("Failed to load kanban boards:", error.message);
-        } else {
-          console.error("Failed to load kanban boards:", error);
-        }
-      }
-    };
-
-    loadBoards();
-  }, [repoPath, refreshTrigger]);
-
-  // Auto-save every 2 seconds when content changes
-  useEffect(() => {
-    const note = currentNoteRef.current;
-    if (!note || !repoPath) return;
-
-    const timeoutId = setTimeout(async () => {
-      // Extract content from currentNote (without frontmatter) to compare
-      const { content: currentContentWithoutFrontmatter } = extractFrontmatter(note.content);
-      if (markdown.trim() !== currentContentWithoutFrontmatter.trim()) {
-        await handleSave();
-      }
-    }, 2000);
-
-    return () => clearTimeout(timeoutId);
-  }, [markdown, repoPath]);
-
+  // Wrapper handlers that update refresh trigger
   const handleNewNote = async () => {
-    if (!repoPath) return;
-
-    const baseContent = "# Untitled Note\n\n";
-    const frontmatter = { type: "note" };
-    const contentWithFrontmatter = addFrontmatter(baseContent, frontmatter);
-
-    const newNote: Note = {
-      id: generateNoteId(),
-      title: "Untitled Note",
-      content: contentWithFrontmatter,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      type: "note",
-    };
-
-    newNote.path = generateNotePath(newNote.title, newNote.createdAt);
-
-    // Save the note immediately so it appears in the sidebar
-    try {
-      const noteRepo = new NoteRepository(repoPath);
-      await noteRepo.write({
-        notePath: newNote.path,
-        content: contentWithFrontmatter,
-      });
-
-      setCurrentNote(newNote);
-      setMarkdown(baseContent); // Only show content, not frontmatter
-      setNoteFrontmatter(frontmatter); // Store frontmatter separately
-      previousTitleRef.current = newNote.title; // Initialize title tracking
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        console.error("Failed to create note:", error.message);
-      } else {
-        console.error("Failed to create note:", error);
-      }
-    }
+    const success = await noteOps.handleNewNote();
+    if (success) setRefreshTrigger((prev) => prev + 1);
   };
 
-  const handleTemplateSelect = async (template: NoteTemplate) => {
-    if (!repoPath) return;
-
-    // Add frontmatter with the template type to the content
-    const frontmatter = { type: template.type };
-    const contentWithFrontmatter = addFrontmatter(template.content, frontmatter);
-
-    const newNote: Note = {
-      id: generateNoteId(),
-      title: template.name,
-      content: contentWithFrontmatter,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      type: template.type,
-    };
-
-    newNote.path = generateNotePath(newNote.title, newNote.createdAt);
-
-    // Save the note immediately so it appears in the sidebar
-    try {
-      const noteRepo = new NoteRepository(repoPath);
-      await noteRepo.write({
-        notePath: newNote.path,
-        content: contentWithFrontmatter,
-      });
-
-      setCurrentNote(newNote);
-      setMarkdown(template.content); // Only show content, not frontmatter
-      setNoteFrontmatter(frontmatter); // Store frontmatter separately
-      previousTitleRef.current = newNote.title; // Initialize title tracking
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        console.error("Failed to create note from template:", error.message);
-      } else {
-        console.error("Failed to create note from template:", error);
-      }
-    }
+  const handleTemplateSelect = async (template: any) => {
+    const success = await noteOps.handleTemplateSelect(template);
+    if (success) setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleSelectNote = async (notePath: string) => {
-    if (!repoPath) return;
-
-    try {
-      const noteRepo = new NoteRepository(repoPath);
-      const data = await noteRepo.read(notePath);
-
-      // Extract frontmatter and metadata from content
-      const { data: frontmatter, content: markdownContent } = extractFrontmatter(data.content);
-      const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
-      const title = titleMatch ? titleMatch[1] : "Untitled";
-
-      const note: Note = {
-        id: generateNoteId(), // Generate fresh ID for tracking
-        title,
-        content: data.content,
-        path: notePath,
-        createdAt: data.modified,
-        updatedAt: data.modified,
-        type: frontmatter.type || "note",
-      };
-
-      setCurrentNote(note);
-      setMarkdown(markdownContent); // Only show content, not frontmatter
-      setNoteFrontmatter(frontmatter); // Store frontmatter separately
-      setActiveTab("notes"); // Switch to notes tab
-      // Initialize title tracking
-      previousTitleRef.current = note.title;
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        console.error("Failed to load note:", error.message);
-      } else {
-        console.error("Failed to load note:", error);
-      }
-    }
-  };
-
-  const handleSave = async () => {
-    const note = currentNoteRef.current;
-    if (!note || !repoPath || !note.path) return;
-
-    setIsSaving(true);
-    try {
-      // Extract title from markdown (first H1)
-      const titleMatch = markdown.match(/^#\s+(.+)$/m);
-      const title = titleMatch ? titleMatch[1] : "Untitled";
-
-      // Check if title has changed
-      const titleChanged = previousTitleRef.current && previousTitleRef.current !== title;
-      previousTitleRef.current = title;
-
-      // Merge frontmatter with markdown content for saving
-      const mergedFrontmatter = {
-        ...noteFrontmatter,
-        type: note.type || noteFrontmatter.type || "note",
-      };
-      const contentToSave = addFrontmatter(markdown, mergedFrontmatter);
-
-      const updatedNote: Note = {
-        ...note,
-        title,
-        content: contentToSave,
-        updatedAt: new Date().toISOString(),
-      };
-
-      const noteRepo = new NoteRepository(repoPath);
-      await noteRepo.write({
-        notePath: note.path,
-        content: contentToSave,
-      });
-
-      // Update ref directly to avoid re-render, but keep content in sync
-      currentNoteRef.current = updatedNote;
-      setLastSaved(new Date());
-
-      // Update currentNote state to refresh the header display
-      setCurrentNote(updatedNote);
-
-      // Only refresh sidebar if title changed (to update the list)
-      if (titleChanged) {
-        setRefreshTrigger((prev) => prev + 1);
-      }
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        console.error("Failed to save note:", error.message);
-      } else {
-        console.error("Failed to save note:", error);
-      }
-    } finally {
-      setIsSaving(false);
-    }
+    await noteOps.handleSelectNote(notePath);
+    setActiveTab("notes");
   };
 
   const handleDeleteNote = async (notePath: string) => {
-    if (!repoPath) return;
-
-    try {
-      const noteRepo = new NoteRepository(repoPath);
-      await noteRepo.deleteNote(notePath);
-
-      if (currentNote?.path === notePath) {
-        setCurrentNote(null);
-        setMarkdown("");
-      }
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        console.error("Failed to delete note:", error.message);
-      } else {
-        console.error("Failed to delete note:", error);
-      }
-    }
+    const success = await noteOps.handleDeleteNote(notePath);
+    if (success) setRefreshTrigger((prev) => prev + 1);
   };
 
   const handleArchiveNote = async (notePath: string) => {
-    // Archive functionality - move to archive/ directory
-    if (!repoPath) return;
+    const success = await noteOps.handleArchiveNote(notePath);
+    if (success) setRefreshTrigger((prev) => prev + 1);
+  };
 
-    try {
-      const noteRepo = new NoteRepository(repoPath);
-
-      // Read the note
-      const data = await noteRepo.read(notePath);
-
-      // Create archive path
-      const archivePath = `archive/${notePath}`;
-
-      // Write to archive
-      await noteRepo.write({
-        notePath: archivePath,
-        content: data.content,
-      });
-
-      // Delete original
-      await handleDeleteNote(notePath);
-
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        console.error("Failed to archive note:", error.message);
-      } else {
-        console.error("Failed to archive note:", error);
-      }
-    }
+  const handleSave = async () => {
+    const titleChanged = await noteOps.handleSave();
+    if (titleChanged) setRefreshTrigger((prev) => prev + 1);
   };
 
   // Show setup wizard if no repo is selected
@@ -420,20 +147,20 @@ export default function Home() {
                 Holocron
               </h1>
             </div>
-            {currentNote && !isFullscreen && (
+            {noteOps.currentNote && !isFullscreen && (
               <>
                 <Separator orientation="vertical" className="h-6" />
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{currentNote.title}</span>
-                  {isSaving && (
+                  <span className="text-sm font-medium">{noteOps.currentNote.title}</span>
+                  {noteOps.isSaving && (
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                       <Save className="h-3 w-3 animate-pulse" />
                       Saving...
                     </span>
                   )}
-                  {!isSaving && lastSaved && (
+                  {!noteOps.isSaving && noteOps.lastSaved && (
                     <span className="text-xs text-muted-foreground">
-                      Saved {lastSaved.toLocaleTimeString()}
+                      Saved {noteOps.lastSaved.toLocaleTimeString()}
                     </span>
                   )}
                 </div>
@@ -453,7 +180,7 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden">
         {!sidebarCollapsed && !isFullscreen && (
           <NotesSidebar
-            currentNoteId={currentNote?.path || null}
+            currentNoteId={noteOps.currentNote?.path || null}
             onSelectNote={handleSelectNote}
             onNewNote={handleNewNote}
             onArchiveNote={handleArchiveNote}
@@ -505,7 +232,7 @@ export default function Home() {
                     </TabsTrigger>
                   ))}
                 </TabsList>
-                {currentNote && (
+                {noteOps.currentNote && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -522,7 +249,7 @@ export default function Home() {
             {isFullscreen && (
               <div className="border-b px-4 py-2 flex items-center justify-between">
                 <span className="text-sm font-medium">
-                  {currentNote?.title || "Note"}
+                  {noteOps.currentNote?.title || "Note"}
                 </span>
                 <Button
                   variant="ghost"
@@ -537,11 +264,11 @@ export default function Home() {
             )}
 
             <TabsContent value="notes" className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0">
-              {currentNote ? (
+              {noteOps.currentNote ? (
                 <div className="flex-1 min-h-0">
                   <TiptapEditor
-                    content={markdown}
-                    onChange={setMarkdown}
+                    content={noteOps.markdown}
+                    onChange={noteOps.setMarkdown}
                     placeholder="Start writing your note..."
                     kanbanBoards={kanbanBoards}
                   />

@@ -61,15 +61,15 @@ export function extractKanbanTasks(
     if (boardOrKanban?.toLowerCase() === "kanban") {
       // @kanban or @kanban:column → use default board
       boardId = undefined; // Will use default board
-      columnName = column1 || column2 || "To Do";
+      columnName = column1 || column2 || ""; // Empty string = use first column
     } else if (boardOrKanban) {
       // @board-id or @board-id:column → specific board
       boardId = boardOrKanban;
-      columnName = column1 || "To Do";
+      columnName = column1 || ""; // Empty string = use first column
     } else {
       // #kanban or #kanban:column → use default board
       boardId = undefined;
-      columnName = column2 || "To Do";
+      columnName = column2 || ""; // Empty string = use first column
     }
 
     // First, strip HTML tags (mentions are wrapped in HTML)
@@ -95,12 +95,15 @@ export function extractKanbanTasks(
 /**
  * Capitalize column name, preserving multi-word formats
  * Examples:
+ *   "" -> "" (empty means use first column)
  *   "doing" -> "Doing"
  *   "to do" -> "To Do"
  *   "to-do" -> "To-Do"
  *   "in progress" -> "In Progress"
  */
 function capitalizeColumn(column: string): string {
+  if (!column) return ""; // Empty string means use first column
+
   // Split by spaces or hyphens, capitalize each word, then rejoin
   return column
     .split(/(\s|-)/g) // Split on spaces or hyphens, but keep the separators
@@ -201,45 +204,19 @@ export function syncTasksToBoard(
   newCards.forEach((card) => {
     const extracted = extractedTasks.find((et) => et.content === card.title);
 
-    // Determine target column based on completion status and annotation
-    let targetColumnName: string;
+    let targetColumn: KanbanColumn | undefined;
+
     if (extracted?.completed) {
-      // Completed tasks go to Done column
-      targetColumnName = "Done";
-    } else {
-      // Use the specified column or default to "To Do"
-      targetColumnName = extracted?.column || "To Do";
+      // Completed tasks go to last column (typically "Done")
+      targetColumn = updatedColumns[updatedColumns.length - 1];
+    } else if (extracted?.column && extracted.column !== "") {
+      // If column is specified, try to find it by title (case-insensitive)
+      targetColumn = updatedColumns.find(
+        (col) => col.title.toLowerCase() === extracted.column.toLowerCase()
+      );
     }
 
-    // Find column by title (case-insensitive)
-    let targetColumn = updatedColumns.find(
-      (col) => col.title.toLowerCase() === targetColumnName.toLowerCase()
-    );
-
-    // If target column not found, try to find a TODO-like column
-    if (!targetColumn && !extracted?.completed) {
-      // Try to find column by ID "todo"
-      targetColumn = updatedColumns.find((col) => col.id.toLowerCase() === "todo");
-
-      // If not found, try to find any column with "todo" or "to do" in the title
-      if (!targetColumn) {
-        targetColumn = updatedColumns.find(
-          (col) => col.title.toLowerCase().includes("todo") ||
-                  col.title.toLowerCase().includes("to do") ||
-                  col.title.toLowerCase().includes("to-do")
-        );
-      }
-
-      // If still not found, find the first column that's not "Done"
-      if (!targetColumn) {
-        targetColumn = updatedColumns.find(
-          (col) => col.title.toLowerCase() !== "done" &&
-                  !col.title.toLowerCase().includes("done")
-        );
-      }
-    }
-
-    // Final fallback: use first column
+    // Default: use first column if no match found or if column was empty
     if (!targetColumn) {
       targetColumn = updatedColumns[0];
     }

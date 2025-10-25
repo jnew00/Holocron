@@ -133,9 +133,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     };
     root.style.setProperty("--font-editor", editorFonts[settings.editorFont] || editorFonts["mono"]);
 
-    // Apply font size settings
-    root.style.setProperty("--font-size-global", `${settings.fontSizeGlobal}%`);
-    root.style.setProperty("--font-size-editor", `${settings.fontSizeEditor}%`);
+    // Apply font size settings to html element (affects all rem-based sizing)
+    document.documentElement.style.fontSize = `${settings.fontSizeGlobal}%`;
+
+    // Set editor-specific font size as CSS variable
+    root.style.setProperty("--font-size-editor-scale", `${settings.fontSizeEditor / 100}`);
   }, [settings.theme, settings.density, settings.accentColor, settings.uiFont, settings.editorFont, settings.fontSizeGlobal, settings.fontSizeEditor]);
 
   // Save settings to filesystem config whenever they change

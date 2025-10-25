@@ -68,7 +68,6 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
-    font-size: var(--font-size-global, 100%);
   }
 }
 
@@ -97,7 +96,7 @@
 .ProseMirror {
   outline: none;
   font-family: var(--font-editor, ui-monospace, monospace);
-  font-size: var(--font-size-editor, 100%);
+  font-size: calc(1em * var(--font-size-editor-scale, 1));
 }
 
 /* Table Styles */

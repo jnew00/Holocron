@@ -12,6 +12,9 @@ interface Settings {
   editorFont: string;
   editorTheme: "github-light" | "github-dark" | "monokai" | "dracula" | "nord";
   density: "compact" | "comfortable" | "spacious";
+  // Font size settings (percentage: 50-200)
+  fontSizeGlobal: number;
+  fontSizeEditor: number;
 }
 
 interface SettingsContextType {
@@ -27,6 +30,8 @@ const defaultSettings: Settings = {
   editorFont: "mono",
   editorTheme: "github-light",
   density: "comfortable",
+  fontSizeGlobal: 100, // 100% = default size
+  fontSizeEditor: 100, // 100% = default size
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -127,7 +132,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       "cascadia-code": "'Cascadia Code', monospace",
     };
     root.style.setProperty("--font-editor", editorFonts[settings.editorFont] || editorFonts["mono"]);
-  }, [settings.theme, settings.density, settings.accentColor, settings.uiFont, settings.editorFont]);
+
+    // Apply font size settings
+    root.style.setProperty("--font-size-global", `${settings.fontSizeGlobal}%`);
+    root.style.setProperty("--font-size-editor", `${settings.fontSizeEditor}%`);
+  }, [settings.theme, settings.density, settings.accentColor, settings.uiFont, settings.editorFont, settings.fontSizeGlobal, settings.fontSizeEditor]);
 
   // Save settings to filesystem config whenever they change
   const updateSettings = async (newSettings: Partial<Settings>) => {

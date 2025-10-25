@@ -4,13 +4,12 @@ import '@testing-library/jest-dom'
 const { webcrypto } = require('crypto')
 const { TextEncoder, TextDecoder } = require('util')
 
-// Set up crypto API
-if (!global.crypto) {
-  global.crypto = {
-    subtle: webcrypto.subtle,
-    getRandomValues: webcrypto.getRandomValues.bind(webcrypto)
-  }
-}
+// Set up crypto API - assign the webcrypto object directly to preserve all properties
+Object.defineProperty(global, 'crypto', {
+  value: webcrypto,
+  writable: false,
+  configurable: true
+})
 
 if (!global.TextEncoder) {
   global.TextEncoder = TextEncoder

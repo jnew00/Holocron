@@ -3,34 +3,23 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as crypto from "crypto";
+import { encrypt } from "@/lib/crypto/unified";
 
 const execAsync = promisify(exec);
 
-// Encrypt a file using AES-256-GCM
-async function encryptFile(filePath: string, passphrase: string): Promise<void> {
+// Encrypt a file using unified crypto (AES-256-GCM with AAD binding)
+async function encryptFile(filePath: string, passphrase: string, repoPath: string): Promise<void> {
   const plaintext = await fs.readFile(filePath, "utf-8");
 
-  // Generate salt and IV
-  const salt = crypto.randomBytes(32);
-  const iv = crypto.randomBytes(16);
+  // Calculate relative path for AAD (binds ciphertext to file location)
+  const relativePath = path.relative(repoPath, filePath);
+  const aad = relativePath.replace(/\\/g, '/'); // Normalize path separators
 
-  // Derive key from passphrase
-  const key = crypto.pbkdf2Sync(passphrase, salt, 100000, 32, "sha256");
-
-  // Encrypt
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(plaintext, "utf-8"),
-    cipher.final(),
-  ]);
-  const authTag = cipher.getAuthTag();
-
-  // Format: salt(32) + iv(16) + authTag(16) + encrypted
-  const result = Buffer.concat([salt, iv, authTag, encrypted]);
+  // Encrypt with AAD binding
+  const encrypted = await encrypt(plaintext, passphrase, aad);
 
   // Write encrypted file
-  await fs.writeFile(filePath + ".enc", result);
+  await fs.writeFile(filePath + ".enc", encrypted);
 }
 
 export async function POST(request: NextRequest) {
@@ -59,7 +48,7 @@ export async function POST(request: NextRequest) {
             if (entry.isDirectory()) {
               await encryptMarkdownFiles(fullPath);
             } else if (entry.isFile() && entry.name.endsWith(".md")) {
-              await encryptFile(fullPath, passphrase);
+              await encryptFile(fullPath, passphrase, repoPath);
             }
           }
         } catch (error) {

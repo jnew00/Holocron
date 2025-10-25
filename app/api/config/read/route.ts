@@ -1,34 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as crypto from "crypto";
-
-/**
- * Decrypt config using passphrase-based encryption (AES-256-GCM)
- * This allows the same config to be decrypted on any machine with the passphrase
- */
-function decryptConfig(ciphertext: string, passphrase: string): string {
-  // Derive a 32-byte key from the passphrase
-  const salt = Buffer.from("localnote-config-salt-v1", "utf-8");
-  const key = crypto.pbkdf2Sync(passphrase, salt, 100000, 32, "sha256");
-
-  const data = Buffer.from(ciphertext, "base64");
-
-  // Extract components
-  const iv = data.subarray(0, 16);
-  const authTag = data.subarray(16, 32);
-  const encrypted = data.subarray(32);
-
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(authTag);
-
-  const decrypted = Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]);
-
-  return decrypted.toString("utf-8");
-}
+import { decryptConfig } from "@/lib/crypto/unified";
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,7 +24,7 @@ export async function GET(request: NextRequest) {
       // If passphrase is provided, try to decrypt
       if (passphrase) {
         try {
-          const decryptedJson = decryptConfig(encryptedData, passphrase);
+          const decryptedJson = await decryptConfig(encryptedData, passphrase);
           const config = JSON.parse(decryptedJson);
 
           return NextResponse.json({

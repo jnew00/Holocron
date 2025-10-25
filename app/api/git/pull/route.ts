@@ -3,35 +3,24 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
-import * as crypto from "crypto";
+import { decrypt } from "@/lib/crypto/unified";
 
 const execAsync = promisify(exec);
 
-// Decrypt a file using AES-256-GCM
-async function decryptFile(encFilePath: string, passphrase: string): Promise<void> {
+// Decrypt a file using unified crypto (AES-256-GCM with AAD verification)
+async function decryptFile(encFilePath: string, passphrase: string, repoPath: string): Promise<void> {
   const encryptedData = await fs.readFile(encFilePath);
 
-  // Extract components: salt(32) + iv(16) + authTag(16) + encrypted
-  const salt = encryptedData.subarray(0, 32);
-  const iv = encryptedData.subarray(32, 48);
-  const authTag = encryptedData.subarray(48, 64);
-  const encrypted = encryptedData.subarray(64);
-
-  // Derive key from passphrase
-  const key = crypto.pbkdf2Sync(passphrase, salt, 100000, 32, "sha256");
-
-  // Decrypt
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(authTag);
-
-  const decrypted = Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]);
-
-  // Write decrypted file (remove .enc extension)
+  // Calculate relative path for AAD (must match encryption AAD)
   const outputPath = encFilePath.replace(/\.enc$/, "");
-  await fs.writeFile(outputPath, decrypted, "utf-8");
+  const relativePath = path.relative(repoPath, outputPath);
+  const aad = relativePath.replace(/\\/g, '/'); // Normalize path separators
+
+  // Decrypt with AAD verification
+  const decrypted = await decrypt(new Uint8Array(encryptedData), passphrase, aad);
+
+  // Write decrypted file
+  await fs.writeFile(outputPath, Buffer.from(decrypted), "utf-8");
 }
 
 export async function POST(request: NextRequest) {
@@ -95,7 +84,7 @@ export async function POST(request: NextRequest) {
               await decryptMarkdownFiles(fullPath);
             } else if (entry.isFile() && entry.name.endsWith(".md.enc")) {
               try {
-                await decryptFile(fullPath, passphrase);
+                await decryptFile(fullPath, passphrase, repoPath);
               } catch (error) {
                 console.error(`Failed to decrypt ${fullPath}:`, error);
               }

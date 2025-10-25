@@ -99,6 +99,7 @@ export function NotesSidebar({
             };
           });
 
+        console.log("Loaded notes with types:", loadedNotes.map(n => ({ title: n.title, type: n.type })));
         setNotes(loadedNotes);
       }
     } catch (error) {
@@ -231,6 +232,12 @@ export function NotesSidebar({
       ? groupNotesByTime(filteredNotes)
       : groupNotesByType(filteredNotes);
 
+  // Debug logging
+  if (sortBy === "type") {
+    console.log("Grouping by type. Filtered notes:", filteredNotes.map(n => ({ title: n.title, type: n.type })));
+    console.log("Grouped result:", Object.entries(groupedNotes).map(([cat, notes]) => ({ category: cat, count: notes.length })));
+  }
+
   const handleDeleteConfirm = () => {
     if (deleteConfirmNote) {
       onDeleteNote(deleteConfirmNote);
@@ -258,7 +265,7 @@ export function NotesSidebar({
     <>
       <div
         ref={sidebarRef}
-        className="border-r bg-muted/30 flex flex-col h-screen relative"
+        className="border-r bg-muted/30 flex flex-col h-full relative"
         style={{ width: `${sidebarWidth}px` }}
       >
         <div className="p-3 border-b space-y-2">
@@ -411,12 +418,12 @@ export function NotesSidebar({
         </ScrollArea>
 
         {/* Footer with Archive Toggle */}
-        <div className="p-3 border-t">
+        <div className="p-3 border-t bg-background z-10">
           <Button
             variant={showArchived ? "secondary" : "ghost"}
             size="sm"
             onClick={() => setShowArchived(!showArchived)}
-            className="w-full justify-center"
+            className="w-full justify-center h-9"
           >
             {showArchived ? (
               <>

@@ -14,6 +14,7 @@ import { GitSync } from "@/components/git/GitSync";
 import { KanbanSyntaxHelp } from "@/components/kanban/KanbanSyntaxHelp";
 import { NoteTemplate } from "@/lib/templates/templates";
 import { KanbanBoard as KanbanBoardType } from "@/lib/kanban/types";
+import { addFrontmatter, extractFrontmatter, updateContent } from "@/lib/notes/frontmatter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -129,12 +130,16 @@ export default function Home() {
   const handleNewNote = async () => {
     if (!repoPath) return;
 
+    const baseContent = "# Untitled Note\n\n";
+    const contentWithFrontmatter = addFrontmatter(baseContent, { type: "note" });
+
     const newNote: Note = {
       id: generateNoteId(),
       title: "Untitled Note",
-      content: "# Untitled Note\n\n",
+      content: contentWithFrontmatter,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      type: "note",
     };
 
     newNote.path = generateNotePath(newNote.title, newNote.createdAt);
@@ -147,13 +152,13 @@ export default function Home() {
         body: JSON.stringify({
           repoPath,
           notePath: newNote.path,
-          content: newNote.content,
+          content: contentWithFrontmatter,
         }),
       });
 
       if (response.ok) {
         setCurrentNote(newNote);
-        setMarkdown(newNote.content);
+        setMarkdown(contentWithFrontmatter);
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -164,10 +169,15 @@ export default function Home() {
   const handleTemplateSelect = async (template: NoteTemplate) => {
     if (!repoPath) return;
 
+    // Add frontmatter with the template type to the content
+    const contentWithFrontmatter = addFrontmatter(template.content, {
+      type: template.type
+    });
+
     const newNote: Note = {
       id: generateNoteId(),
       title: template.name,
-      content: template.content,
+      content: contentWithFrontmatter,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       type: template.type,
@@ -183,13 +193,13 @@ export default function Home() {
         body: JSON.stringify({
           repoPath,
           notePath: newNote.path,
-          content: newNote.content,
+          content: contentWithFrontmatter,
         }),
       });
 
       if (response.ok) {
         setCurrentNote(newNote);
-        setMarkdown(template.content);
+        setMarkdown(contentWithFrontmatter);
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -208,8 +218,9 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
 
-        // Extract metadata from content
-        const titleMatch = data.content.match(/^#\s+(.+)$/m);
+        // Extract frontmatter and metadata from content
+        const { data: frontmatter, content: markdownContent } = extractFrontmatter(data.content);
+        const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
         const title = titleMatch ? titleMatch[1] : "Untitled";
 
         const note: Note = {
@@ -219,6 +230,7 @@ export default function Home() {
           path: notePath,
           createdAt: data.modified,
           updatedAt: data.modified,
+          type: frontmatter.type || "note",
         };
 
         setCurrentNote(note);
@@ -234,14 +246,22 @@ export default function Home() {
 
     setIsSaving(true);
     try {
+      // Extract frontmatter and content separately
+      const { data: frontmatter, content: markdownContent } = extractFrontmatter(markdown);
+
       // Extract title from markdown (first H1)
-      const titleMatch = markdown.match(/^#\s+(.+)$/m);
+      const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
       const title = titleMatch ? titleMatch[1] : "Untitled";
+
+      // Ensure type is preserved in frontmatter
+      const contentToSave = addFrontmatter(markdown, {
+        type: currentNote.type || frontmatter.type || "note",
+      });
 
       const updatedNote: Note = {
         ...currentNote,
         title,
-        content: markdown,
+        content: contentToSave,
         updatedAt: new Date().toISOString(),
       };
 
@@ -251,7 +271,7 @@ export default function Home() {
         body: JSON.stringify({
           repoPath,
           notePath: currentNote.path,
-          content: markdown,
+          content: contentToSave,
         }),
       });
 

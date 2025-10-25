@@ -58,12 +58,10 @@ export class GitRepository extends BaseRepository {
    * Get git status
    */
   async status(): Promise<GitStatusResult> {
-    const url = this.buildUrl("/api/git/status", {
-      repoPath: this.repoPath,
-    });
-
     try {
-      return await this.get(url);
+      return await this.post("/api/git/status", {
+        repoPath: this.repoPath,
+      });
     } catch (error) {
       if (error instanceof RepositoryError) {
         throw error;

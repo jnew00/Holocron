@@ -1,4 +1,4 @@
-# LocalNote - Exclude plaintext markdown files from Git
+# Holocron - Exclude plaintext markdown files from Git
 # Only encrypted .md.enc files should be committed
 
 # Exclude all plaintext .md files in the notes directory

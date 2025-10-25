@@ -11,6 +11,9 @@ const withSerwist = withSerwistInit({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Empty turbopack config to silence webpack warning
+  // Serwist still uses webpack for service worker compilation
+  turbopack: {},
 };
 
 export default withSerwist(nextConfig);

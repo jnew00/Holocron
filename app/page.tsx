@@ -6,6 +6,7 @@ import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { TemplateSelector } from "@/components/templates/TemplateSelector";
+import { TemplateManager } from "@/components/templates/TemplateManager";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { BoardManagement } from "@/components/kanban/BoardManagement";
 import { NotesSidebar } from "@/components/notes/NotesSidebar";
@@ -14,6 +15,7 @@ import { GitSync } from "@/components/git/GitSync";
 import { KanbanSyntaxHelp } from "@/components/kanban/KanbanSyntaxHelp";
 import { NoteTemplate } from "@/lib/templates/templates";
 import { KanbanBoard as KanbanBoardType } from "@/lib/kanban/types";
+import { addFrontmatter, extractFrontmatter, updateContent } from "@/lib/notes/frontmatter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -42,12 +44,14 @@ export default function Home() {
   const { isUnlocked, repoPath, passphrase } = useRepo();
   const [currentNote, setCurrentNote] = useState<Note | null>(null);
   const [markdown, setMarkdown] = useState("");
+  const [noteFrontmatter, setNoteFrontmatter] = useState<any>({});
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [kanbanBoards, setKanbanBoards] = useState<KanbanBoardType[]>([]);
+  const [activeTab, setActiveTab] = useState("notes");
 
   // Helper function to generate note path
   const generateNotePath = (title: string, createdAt: string): string => {
@@ -118,7 +122,9 @@ export default function Home() {
     if (!currentNote || !repoPath) return;
 
     const timeoutId = setTimeout(async () => {
-      if (markdown !== currentNote.content) {
+      // Extract content from currentNote (without frontmatter) to compare
+      const { content: currentContentWithoutFrontmatter } = extractFrontmatter(currentNote.content);
+      if (markdown.trim() !== currentContentWithoutFrontmatter.trim()) {
         await handleSave();
       }
     }, 2000);
@@ -129,12 +135,17 @@ export default function Home() {
   const handleNewNote = async () => {
     if (!repoPath) return;
 
+    const baseContent = "# Untitled Note\n\n";
+    const frontmatter = { type: "note" };
+    const contentWithFrontmatter = addFrontmatter(baseContent, frontmatter);
+
     const newNote: Note = {
       id: generateNoteId(),
       title: "Untitled Note",
-      content: "# Untitled Note\n\n",
+      content: contentWithFrontmatter,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      type: "note",
     };
 
     newNote.path = generateNotePath(newNote.title, newNote.createdAt);
@@ -147,13 +158,14 @@ export default function Home() {
         body: JSON.stringify({
           repoPath,
           notePath: newNote.path,
-          content: newNote.content,
+          content: contentWithFrontmatter,
         }),
       });
 
       if (response.ok) {
         setCurrentNote(newNote);
-        setMarkdown(newNote.content);
+        setMarkdown(baseContent); // Only show content, not frontmatter
+        setNoteFrontmatter(frontmatter); // Store frontmatter separately
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -164,10 +176,14 @@ export default function Home() {
   const handleTemplateSelect = async (template: NoteTemplate) => {
     if (!repoPath) return;
 
+    // Add frontmatter with the template type to the content
+    const frontmatter = { type: template.type };
+    const contentWithFrontmatter = addFrontmatter(template.content, frontmatter);
+
     const newNote: Note = {
       id: generateNoteId(),
       title: template.name,
-      content: template.content,
+      content: contentWithFrontmatter,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       type: template.type,
@@ -183,13 +199,14 @@ export default function Home() {
         body: JSON.stringify({
           repoPath,
           notePath: newNote.path,
-          content: newNote.content,
+          content: contentWithFrontmatter,
         }),
       });
 
       if (response.ok) {
         setCurrentNote(newNote);
-        setMarkdown(template.content);
+        setMarkdown(template.content); // Only show content, not frontmatter
+        setNoteFrontmatter(frontmatter); // Store frontmatter separately
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -208,8 +225,9 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
 
-        // Extract metadata from content
-        const titleMatch = data.content.match(/^#\s+(.+)$/m);
+        // Extract frontmatter and metadata from content
+        const { data: frontmatter, content: markdownContent } = extractFrontmatter(data.content);
+        const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
         const title = titleMatch ? titleMatch[1] : "Untitled";
 
         const note: Note = {
@@ -219,10 +237,13 @@ export default function Home() {
           path: notePath,
           createdAt: data.modified,
           updatedAt: data.modified,
+          type: frontmatter.type || "note",
         };
 
         setCurrentNote(note);
-        setMarkdown(note.content);
+        setMarkdown(markdownContent); // Only show content, not frontmatter
+        setNoteFrontmatter(frontmatter); // Store frontmatter separately
+        setActiveTab("notes"); // Switch to notes tab
       }
     } catch (error) {
       console.error("Failed to load note:", error);
@@ -238,10 +259,17 @@ export default function Home() {
       const titleMatch = markdown.match(/^#\s+(.+)$/m);
       const title = titleMatch ? titleMatch[1] : "Untitled";
 
+      // Merge frontmatter with markdown content for saving
+      const mergedFrontmatter = {
+        ...noteFrontmatter,
+        type: currentNote.type || noteFrontmatter.type || "note",
+      };
+      const contentToSave = addFrontmatter(markdown, mergedFrontmatter);
+
       const updatedNote: Note = {
         ...currentNote,
         title,
-        content: markdown,
+        content: contentToSave,
         updatedAt: new Date().toISOString(),
       };
 
@@ -251,7 +279,7 @@ export default function Home() {
         body: JSON.stringify({
           repoPath,
           notePath: currentNote.path,
-          content: markdown,
+          content: contentToSave,
         }),
       });
 
@@ -372,8 +400,8 @@ export default function Home() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {!isFullscreen && <TemplateSelector onSelectTemplate={handleTemplateSelect} />}
             <BoardManagement boards={kanbanBoards} onBoardsChange={() => setRefreshTrigger(prev => prev + 1)} />
+            <TemplateSelector onSelectTemplate={handleTemplateSelect} />
             <GitSync />
             <SettingsDialog />
           </div>
@@ -408,10 +436,10 @@ export default function Home() {
           </div>
         )}
 
-        <main className="flex-1 overflow-hidden flex flex-col">
-          <Tabs defaultValue="notes" className="flex-1 flex flex-col">
+        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="relative flex-1 flex flex-col min-h-0">
             {!isFullscreen && (
-              <div className="border-b px-4 flex items-center justify-between">
+              <div className="border-b px-4 flex items-center justify-between flex-shrink-0">
                 <TabsList>
                   <TabsTrigger value="notes" className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
@@ -467,14 +495,16 @@ export default function Home() {
               </div>
             )}
 
-            <TabsContent value="notes" className="flex-1 overflow-auto m-0 p-6">
+            <TabsContent value="notes" className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0">
               {currentNote ? (
-                <TiptapEditor
-                  content={markdown}
-                  onChange={setMarkdown}
-                  placeholder="Start writing your note..."
-                  kanbanBoards={kanbanBoards}
-                />
+                <div className="flex-1 min-h-0">
+                  <TiptapEditor
+                    content={markdown}
+                    onChange={setMarkdown}
+                    placeholder="Start writing your note..."
+                    kanbanBoards={kanbanBoards}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                   <FileText className="h-16 w-16 mb-4 opacity-20" />
@@ -490,13 +520,15 @@ export default function Home() {
               <TabsContent
                 key={board.id}
                 value={`kanban-${board.id}`}
-                className="flex-1 overflow-auto m-0 p-6"
+                className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0"
               >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex-shrink-0 flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">{board.name}</h2>
                   <KanbanSyntaxHelp />
                 </div>
-                <KanbanBoard boardId={board.id} onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)} />
+                <div className="flex-1 min-h-0 h-0 overflow-y-auto">
+                  <KanbanBoard boardId={board.id} onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)} />
+                </div>
               </TabsContent>
             ))}
           </Tabs>

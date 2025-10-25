@@ -16,7 +16,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { FileText, Search, Archive, Trash2, ArchiveRestore, PanelLeftClose } from "lucide-react";
+import { FileText, Search, Archive, Trash2, ArchiveRestore, PanelLeftClose, Clock, FolderTree } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface NoteMetadata {
   name: string;
@@ -24,6 +30,7 @@ interface NoteMetadata {
   title: string;
   modified: string;
   size: number;
+  type?: string;
 }
 
 interface NotesSidebarProps {
@@ -88,6 +95,7 @@ export function NotesSidebar({
               title,
               modified: note.modified,
               size: note.size,
+              type: note.type || "note",
             };
           });
 
@@ -250,11 +258,11 @@ export function NotesSidebar({
     <>
       <div
         ref={sidebarRef}
-        className="border-r bg-muted/30 flex flex-col h-screen relative"
+        className="border-r bg-muted/30 flex flex-col h-full relative"
         style={{ width: `${sidebarWidth}px` }}
       >
-        <div className="p-4 border-b">
-          <div className="flex items-center gap-2 mb-3">
+        <div className="p-3 border-b space-y-2">
+          <div className="flex items-center gap-2">
             {onCollapse && (
               <Button
                 variant="ghost"
@@ -266,8 +274,34 @@ export function NotesSidebar({
                 <PanelLeftClose className="h-4 w-4" />
               </Button>
             )}
-            <h2 className="font-semibold text-lg">Notes</h2>
-            <Button size="sm" onClick={onNewNote} className="ml-auto">
+            <h2 className="font-semibold text-base flex-1">Notes</h2>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Sort by"
+                >
+                  {sortBy === "time" ? (
+                    <Clock className="h-4 w-4" />
+                  ) : (
+                    <FolderTree className="h-4 w-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setSortBy("time")}>
+                  <Clock className="h-4 w-4 mr-2" />
+                  Sort by Time
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortBy("type")}>
+                  <FolderTree className="h-4 w-4 mr-2" />
+                  Sort by Type
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button size="sm" onClick={onNewNote} className="h-8">
               <FileText className="h-4 w-4 mr-1" />
               New
             </Button>
@@ -278,46 +312,8 @@ export function NotesSidebar({
               placeholder="Search notes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8"
+              className="pl-8 h-9"
             />
-          </div>
-          <div className="mt-2 space-y-1">
-            <div className="flex gap-1">
-              <Button
-                variant={sortBy === "time" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setSortBy("time")}
-                className="flex-1 text-xs"
-              >
-                By Time
-              </Button>
-              <Button
-                variant={sortBy === "type" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setSortBy("type")}
-                className="flex-1 text-xs"
-              >
-                By Type
-              </Button>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowArchived(!showArchived)}
-              className="w-full justify-start text-xs"
-            >
-              {showArchived ? (
-                <>
-                  <ArchiveRestore className="h-3 w-3 mr-2" />
-                  Hide Archived
-                </>
-              ) : (
-                <>
-                  <Archive className="h-3 w-3 mr-2" />
-                  Show Archived
-                </>
-              )}
-            </Button>
           </div>
         </div>
 
@@ -335,13 +331,13 @@ export function NotesSidebar({
                 : "No notes yet. Create one!"}
             </div>
           ) : (
-            <div className="p-2">
+            <div className="p-1">
               {Object.entries(groupedNotes).map(([category, categoryNotes], categoryIndex) => {
                 if (categoryNotes.length === 0) return null;
 
                 return (
-                  <div key={`${sortBy}-${category}-${categoryIndex}`} className="mb-4">
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 py-2">
+                  <div key={`${sortBy}-${category}-${categoryIndex}`} className="mb-3">
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5">
                       {category}
                     </h3>
                     {categoryNotes.map((note, index) => {
@@ -349,25 +345,25 @@ export function NotesSidebar({
                       return (
                       <div key={`${sortBy}-${category}-${categoryIndex}-${index}-${note.path}`}>
                         <div
-                          className={`p-3 rounded-lg cursor-pointer hover:bg-muted transition-colors ${
+                          className={`p-2 mx-1 rounded-md cursor-pointer hover:bg-muted transition-colors ${
                             currentNoteId === note.path ? "bg-muted" : ""
                           }`}
                           onClick={() => onSelectNote(note.path)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-sm truncate mb-1">
+                              <h3 className="font-medium text-sm truncate mb-0.5">
                                 {note.title || "Untitled"}
                               </h3>
                               <p className="text-xs text-muted-foreground">
                                 {formatDate(note.modified)}
                               </p>
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex gap-0.5">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0"
+                                className="h-6 w-6 p-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onArchiveNote(note.path);
@@ -384,7 +380,7 @@ export function NotesSidebar({
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setDeleteConfirmNote(note.path);
@@ -396,7 +392,7 @@ export function NotesSidebar({
                             </div>
                           </div>
                           {isArchived && (
-                            <span className="inline-block mt-1 text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                            <span className="inline-block mt-1 text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
                               Archived
                             </span>
                           )}
@@ -413,6 +409,28 @@ export function NotesSidebar({
             </div>
           )}
         </ScrollArea>
+
+        {/* Footer with Archive Toggle */}
+        <div className="p-3 border-t bg-background z-10">
+          <Button
+            variant={showArchived ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setShowArchived(!showArchived)}
+            className="w-full justify-center h-9"
+          >
+            {showArchived ? (
+              <>
+                <ArchiveRestore className="h-4 w-4 mr-2" />
+                Hide Archived
+              </>
+            ) : (
+              <>
+                <Archive className="h-4 w-4 mr-2" />
+                Show Archived
+              </>
+            )}
+          </Button>
+        </div>
 
         {/* Resize Handle */}
         <div

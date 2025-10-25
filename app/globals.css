@@ -93,6 +93,14 @@
 }
 
 /* Tiptap Editor Styles */
+.editor-content-wrapper {
+  /* Use CSS transform to scale all editor content */
+  transform: scale(var(--font-size-editor-scale, 1));
+  transform-origin: top left;
+  /* Adjust width to compensate for scaling */
+  width: calc(100% / var(--font-size-editor-scale, 1));
+}
+
 .ProseMirror {
   outline: none;
   font-family: var(--font-editor, ui-monospace, monospace);
@@ -160,14 +168,21 @@
 
 .ProseMirror .task-item {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
 }
 
 .ProseMirror .task-item > label {
   flex: 0 0 auto;
-  margin-top: 0.125rem;
   user-select: none;
+  display: flex;
+  align-items: center;
+}
+
+.ProseMirror .task-item > label input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
 }
 
 .ProseMirror .task-item > div {
@@ -181,14 +196,21 @@
 
 .ProseMirror ul[data-type="taskList"] li {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .ProseMirror ul[data-type="taskList"] li > label {
   flex: 0 0 auto;
   margin-right: 0.5rem;
   user-select: none;
-  margin-top: 0.125rem;
+  display: flex;
+  align-items: center;
+}
+
+.ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 1.125rem;
+  height: 1.125rem;
+  cursor: pointer;
 }
 
 .ProseMirror ul[data-type="taskList"] li > div {

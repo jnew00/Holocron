@@ -22,25 +22,38 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadConfig = async () => {
       const savedPath = localStorage.getItem("localnote-repo-path");
-      if (!savedPath) return;
+      console.log("[RepoContext] Saved path from localStorage:", savedPath);
+
+      if (!savedPath) {
+        console.log("[RepoContext] No saved path, showing setup wizard");
+        return;
+      }
 
       setRepoPathState(savedPath);
 
       try {
         // Try to load encrypted config
         const response = await fetch(`/api/config/read?repoPath=${encodeURIComponent(savedPath)}`);
+        console.log("[RepoContext] Config API response status:", response.status);
 
         if (response.ok) {
           const { config } = await response.json();
+          console.log("[RepoContext] Config loaded, has passphrase:", !!config.passphrase);
 
           // Auto-unlock with stored passphrase
           if (config.passphrase) {
             setPassphrase(config.passphrase);
             setIsUnlocked(true);
+            console.log("[RepoContext] Auto-unlocked with stored passphrase");
+          } else {
+            console.log("[RepoContext] No passphrase in config");
           }
+        } else {
+          const errorData = await response.json();
+          console.error("[RepoContext] Config API error:", errorData);
         }
       } catch (error) {
-        console.error("Failed to load config:", error);
+        console.error("[RepoContext] Failed to load config:", error);
         // If config fails to load, user will need to unlock manually
       }
     };

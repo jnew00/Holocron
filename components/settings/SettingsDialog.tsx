@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -228,6 +229,46 @@ export function SettingsDialog() {
                 </Select>
                 <p className="text-xs text-muted-foreground">
                   Syntax highlighting theme for code blocks
+                </p>
+              </div>
+
+              {/* Global Font Size */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="font-size-global">Global Font Size</Label>
+                  <span className="text-sm text-muted-foreground">{settings.fontSizeGlobal}%</span>
+                </div>
+                <Slider
+                  id="font-size-global"
+                  min={50}
+                  max={200}
+                  step={5}
+                  value={[settings.fontSizeGlobal]}
+                  onValueChange={([value]) => updateSettings({ fontSizeGlobal: value })}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Adjust font size for all UI elements (sidebar, buttons, menus)
+                </p>
+              </div>
+
+              {/* Editor Font Size */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="font-size-editor">Editor Font Size</Label>
+                  <span className="text-sm text-muted-foreground">{settings.fontSizeEditor}%</span>
+                </div>
+                <Slider
+                  id="font-size-editor"
+                  min={50}
+                  max={200}
+                  step={5}
+                  value={[settings.fontSizeEditor]}
+                  onValueChange={([value]) => updateSettings({ fontSizeEditor: value })}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Adjust font size specifically for the note editor content
                 </p>
               </div>
             </div>

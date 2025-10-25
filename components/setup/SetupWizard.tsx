@@ -20,7 +20,7 @@ type WizardStep = "welcome" | "select-directory" | "create-passphrase" | "unlock
 
 export function SetupWizard() {
   const { setRepo, setRepoPath } = useRepo();
-  const [step, setStep] = useState<WizardStep>("welcome");
+  const [step, setStep] = useState<WizardStep>("select-directory");
   const [directoryPath, setDirectoryPath] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [confirmPassphrase, setConfirmPassphrase] = useState("");
@@ -58,7 +58,22 @@ export function SetupWizard() {
       setIsExistingRepo(checkData.isValid);
 
       if (checkData.isValid) {
-        setStep("unlock");
+        // Check if config has a passphrase
+        const configResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(path)}`);
+        if (configResponse.ok) {
+          const { config } = await configResponse.json();
+          if (config && config.passphrase) {
+            // Has passphrase, need to unlock
+            setStep("unlock");
+          } else {
+            // Config exists but no passphrase, treat as new repo
+            console.log("[SetupWizard] Config exists but no passphrase, creating new");
+            setStep("create-passphrase");
+          }
+        } else {
+          // Config doesn't exist or can't be read, create new
+          setStep("create-passphrase");
+        }
       } else {
         setStep("create-passphrase");
       }
@@ -213,14 +228,11 @@ export function SetupWizard() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => setStep("welcome")}>
-            Back
-          </Button>
+        <CardFooter>
           <Button
             onClick={handleSelectDirectory}
             disabled={loading}
-            className="flex-1"
+            className="w-full"
           >
             {loading ? (
               <>

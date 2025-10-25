@@ -12,6 +12,9 @@ interface Settings {
   editorFont: string;
   editorTheme: "github-light" | "github-dark" | "monokai" | "dracula" | "nord";
   density: "compact" | "comfortable" | "spacious";
+  // Font size settings (percentage: 50-200)
+  fontSizeGlobal: number;
+  fontSizeEditor: number;
 }
 
 interface SettingsContextType {
@@ -27,6 +30,8 @@ const defaultSettings: Settings = {
   editorFont: "mono",
   editorTheme: "github-light",
   density: "comfortable",
+  fontSizeGlobal: 100, // 100% = default size
+  fontSizeEditor: 100, // 100% = default size
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -127,7 +132,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       "cascadia-code": "'Cascadia Code', monospace",
     };
     root.style.setProperty("--font-editor", editorFonts[settings.editorFont] || editorFonts["mono"]);
-  }, [settings.theme, settings.density, settings.accentColor, settings.uiFont, settings.editorFont]);
+
+    // Apply font size settings to html element (affects all rem-based sizing)
+    document.documentElement.style.fontSize = `${settings.fontSizeGlobal}%`;
+
+    // Set editor-specific font size as CSS variable
+    root.style.setProperty("--font-size-editor-scale", `${settings.fontSizeEditor / 100}`);
+  }, [settings.theme, settings.density, settings.accentColor, settings.uiFont, settings.editorFont, settings.fontSizeGlobal, settings.fontSizeEditor]);
 
   // Save settings to filesystem config whenever they change
   const updateSettings = async (newSettings: Partial<Settings>) => {
@@ -148,24 +159,34 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (readResponse.ok) {
           const data = await readResponse.json();
           existingConfig = data.config || existingConfig;
+          console.log("[SettingsContext] Existing config has passphrase:", !!existingConfig.passphrase);
         }
 
-        // Merge settings into config
-        const newConfig = {
-          ...existingConfig,
-          settings: updated,
-          updatedAt: new Date().toISOString(),
-        };
+        // CRITICAL: Don't save settings if we might lose the passphrase
+        if (existingConfig.passphrase) {
+          // Merge settings into config, ALWAYS preserving passphrase
+          const newConfig = {
+            ...existingConfig,
+            settings: updated,
+            updatedAt: new Date().toISOString(),
+            // Explicitly preserve passphrase (critical!)
+            passphrase: existingConfig.passphrase,
+          };
 
-        // Write updated config
-        await fetch("/api/config/write", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            repoPath,
-            config: newConfig,
-          }),
-        });
+          console.log("[SettingsContext] Saving config WITH passphrase preserved");
+
+          // Write updated config
+          await fetch("/api/config/write", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              repoPath,
+              config: newConfig,
+            }),
+          });
+        } else {
+          console.warn("[SettingsContext] Skipping config save - no passphrase in existing config, would lose it!");
+        }
       } catch (e) {
         console.error("Failed to save settings to config:", e);
       }

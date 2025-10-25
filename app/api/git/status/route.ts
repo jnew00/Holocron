@@ -42,26 +42,25 @@ export async function POST(request: NextRequest) {
 
     // Parse status
     const lines = status.trim().split("\n").filter(Boolean);
-    const modifiedFiles = lines.filter((l) => l.startsWith(" M")).map((l) => l.slice(3));
-    const addedFiles = lines.filter((l) => l.startsWith("A ") || l.startsWith("??")).map((l) => l.slice(3));
-    const deletedFiles = lines.filter((l) => l.startsWith(" D")).map((l) => l.slice(3));
+    const modifiedFiles = lines.filter((l) => l.startsWith(" M") || l.startsWith("M ")).map((l) => l.slice(3));
+    const createdFiles = lines.filter((l) => l.startsWith("A ")).map((l) => l.slice(3));
+    const deletedFiles = lines.filter((l) => l.startsWith(" D") || l.startsWith("D ")).map((l) => l.slice(3));
+    const renamedFiles = lines.filter((l) => l.startsWith("R ")).map((l) => l.slice(3));
+    const stagedFiles = lines.filter((l) => !l.startsWith("??") && !l.startsWith(" ")).map((l) => l.slice(3));
     const untrackedFiles = lines.filter((l) => l.startsWith("??")).map((l) => l.slice(3));
 
     return NextResponse.json({
-      branch: branch.trim(),
-      modified: modifiedFiles.length,
-      added: addedFiles.length,
-      deleted: deletedFiles.length,
-      untracked: untrackedFiles.length,
+      current: branch.trim(),
+      modified: modifiedFiles,
+      created: createdFiles,
+      deleted: deletedFiles,
+      renamed: renamedFiles,
+      staged: stagedFiles,
+      untracked: untrackedFiles,
       ahead,
       behind,
-      hasChanges: lines.length > 0,
-      files: {
-        modified: modifiedFiles,
-        added: addedFiles,
-        deleted: deletedFiles,
-        untracked: untrackedFiles,
-      },
+      tracking: null,
+      detached: false,
     });
   } catch (error: any) {
     return NextResponse.json(

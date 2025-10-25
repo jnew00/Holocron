@@ -120,7 +120,9 @@ export default function Home() {
     if (!currentNote || !repoPath) return;
 
     const timeoutId = setTimeout(async () => {
-      if (markdown !== currentNote.content) {
+      // Extract content from currentNote (without frontmatter) to compare
+      const { content: currentContentWithoutFrontmatter } = extractFrontmatter(currentNote.content);
+      if (markdown.trim() !== currentContentWithoutFrontmatter.trim()) {
         await handleSave();
       }
     }, 2000);

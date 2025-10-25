@@ -58,20 +58,20 @@ export function SetupWizard() {
       setIsExistingRepo(checkData.isValid);
 
       if (checkData.isValid) {
-        // Check if config has a passphrase
+        // Check if config exists (without trying to decrypt yet)
         const configResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(path)}`);
         if (configResponse.ok) {
-          const { config } = await configResponse.json();
-          if (config && config.passphrase) {
-            // Has passphrase, need to unlock
+          const { exists } = await configResponse.json();
+          if (exists) {
+            // Config exists, need to unlock with passphrase
             setStep("unlock");
           } else {
-            // Config exists but no passphrase, treat as new repo
-            console.log("[SetupWizard] Config exists but no passphrase, creating new");
+            // Config doesn't have expected structure, create new
+            console.log("[SetupWizard] Config exists but invalid structure, creating new");
             setStep("create-passphrase");
           }
         } else {
-          // Config doesn't exist or can't be read, create new
+          // Config doesn't exist, create new
           setStep("create-passphrase");
         }
       } else {
@@ -121,9 +121,10 @@ export function SetupWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           repoPath: directoryPath,
+          passphrase: passphrase, // Used to encrypt the config
           config: {
             version: "1.0",
-            passphrase: passphrase,
+            passphrase: passphrase, // Stored in the encrypted config
             createdAt: new Date().toISOString(),
           },
         }),
@@ -150,23 +151,31 @@ export function SetupWizard() {
     setLoading(true);
 
     try {
-      // Validate passphrase by trying to read config
-      const configResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(directoryPath)}`);
+      // Try to decrypt config with the provided passphrase
+      const configResponse = await fetch(
+        `/api/config/read?repoPath=${encodeURIComponent(directoryPath)}&passphrase=${encodeURIComponent(passphrase)}`
+      );
 
       if (!configResponse.ok) {
         const data = await configResponse.json();
+        if (data.invalidPassphrase) {
+          setError("Invalid passphrase");
+          setLoading(false);
+          return;
+        }
         throw new Error(data.error || "Failed to read config");
       }
 
       const { config } = await configResponse.json();
 
-      // Verify entered passphrase matches stored passphrase
-      if (passphrase !== config.passphrase) {
-        setError("Invalid passphrase");
+      // Verify the config structure is valid
+      if (!config || !config.passphrase) {
+        setError("Invalid config structure");
         setLoading(false);
         return;
       }
 
+      // Successfully decrypted - unlock the repo
       setRepo(directoryPath, passphrase);
       setStep("complete");
     } catch (err) {

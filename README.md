@@ -49,11 +49,19 @@ Like the balance of the Force, Holocron gives you the best of both paths—the J
   - Persistent state with auto-save
 
 ### 🔐 Security & Privacy
+- **Two-Layer Encryption Architecture**
+  - **Local storage**: Plaintext `.md` files (fast editing, no encryption overhead)
+  - **Git storage**: Encrypted `.md.enc` files (secure remote sync)
+  - **Encryption boundary**: Files encrypted during `git commit`, decrypted during `git pull`
+  - **Passphrase-based encryption**: AES-256-GCM (required, minimum 8 characters)
+  - **Cross-device compatible**: Same passphrase = same encrypted config (works on Mac, Windows, Linux)
+  - **Secure config storage**: Config encrypted with your passphrase (safe to commit to Git)
+  - No recovery if passphrase is lost - store it securely!
 - **Local-First Architecture**
   - All data stored on your machine
   - No external APIs or telemetry
   - No cloud dependency
-  - Passphrase-based repository unlocking
+  - Your plaintext files never leave your computer - only encrypted versions go to Git
 
 ### 🔄 Git Integration
 - **Built-in Version Control**
@@ -226,36 +234,70 @@ The true power of Holocron is unleashed when installed as a native application. 
 
 ## 📖 First-Time Setup
 
+### Prerequisites: Set Up Git Repository
+
+**Before using Holocron**, you need to set up a Git repository for your notes:
+
+```bash
+# 1. Create or navigate to your notes folder
+mkdir ~/my-holocron-notes
+cd ~/my-holocron-notes
+
+# 2. Initialize Git repository
+git init
+
+# 3. Configure Git user
+git config user.name "Your Name"
+git config user.email "your.email@example.com"
+
+# 4. (Optional) Add remote repository for syncing across devices
+git remote add origin git@github.com:username/my-notes.git
+
+# 5. (Optional) Set up SSH keys for remote sync
+# See GIT_SETUP.md for detailed Git configuration instructions
+```
+
+### Setup Wizard
+
 When you first open Holocron, you'll be guided through the Setup Wizard:
 
-### Step 1: Choose Your Repository
+#### Step 1: Select Repository Location
 
-**Option A: Create New Repository**
-1. Click "Select Directory"
-2. Choose where to store your knowledge
-3. Holocron initializes a Git repository
-4. Creates folder structure automatically
+1. Click **"Select Folder"**
+2. Navigate to your Git repository folder (created above)
+3. Holocron will detect if it's a new or existing repository
 
-**Option B: Use Existing Repository**
-1. Click "Select Directory"
-2. Navigate to your existing notes repo
-3. Holocron detects the existing structure
-4. You're ready to go!
+#### Step 2: Create Passphrase (REQUIRED)
 
-### Step 2: Set Your Passphrase (Optional)
+**Your passphrase is critical - there is NO recovery if lost!**
 
-- Enter a passphrase to unlock your holocron
-- Used for local authentication
-- Not currently used for encryption (future feature)
-- Can be changed in settings
+1. Enter a strong passphrase (minimum 8 characters)
+2. Confirm your passphrase
+3. Click **"Create Repository"**
 
-### Step 3: Configure Git (Optional)
+**What the passphrase does:**
+- Encrypts notes when committing to Git (creates `.md.enc` files in repository)
+- Decrypts notes when pulling from Git (extracts plaintext to local disk)
+- Encrypts the `config.json.enc` file (which stores the passphrase itself)
+- You enter it once per machine/browser session for authentication
+- Works across all your devices - same passphrase everywhere
+- Cannot be recovered if forgotten - you'll lose access to all encrypted data
 
-If you want to sync across devices:
-1. Go to Settings → Git Configuration
-2. Enter your Git credentials
-3. Configure remote repository URL
-4. Enable auto-sync if desired
+**Unlocking Existing Repository:**
+
+If you're opening an existing Holocron repository:
+1. Select the folder
+2. Enter your existing passphrase
+3. Click **"Unlock"**
+
+#### Step 3: Configure Git Sync (Optional)
+
+After setup, you can configure Git synchronization:
+1. Click the Git icon in the header
+2. Commit, push, and pull from the UI
+3. (Optional) Enable auto-sync in Settings
+
+See **[GIT_SETUP.md](./GIT_SETUP.md)** for comprehensive Git configuration instructions including SSH keys, remotes, and troubleshooting.
 
 ---
 
@@ -298,6 +340,85 @@ notes/
 - Enable in Settings → Git
 - Set your preferred interval
 - Holocron syncs automatically in the background
+
+---
+
+## 📁 How File Storage Works
+
+Understanding Holocron's two-layer architecture:
+
+### On Your Local Filesystem
+
+```
+your-notes-folder/
+├── .git/                          # Git repository (you create this)
+├── .localnote/                    # Holocron metadata (auto-created)
+│   └── config.json.enc           # Passphrase-encrypted config
+├── notes/                         # PLAINTEXT notes for fast editing
+│   └── YYYY/MM/DD/
+│       └── note-title.md         # ← Plaintext .md, ONLY on your machine
+├── kanban/
+│   └── board-name.json           # ← Plaintext .json, ONLY on your machine
+└── .gitignore                    # Optional (you create this)
+```
+
+**Key point**: Your notes are stored as regular plaintext `.md` files on your computer for fast, seamless editing with zero encryption overhead.
+
+### In Your Git Repository
+
+```
+When you run 'git commit' and 'git push':
+
+Git commits/remote contains:
+├── .localnote/
+│   └── config.json.enc           # Safe to commit (machine-specific encryption)
+├── notes/
+│   └── YYYY/MM/DD/
+│       └── note-title.md.enc     # ← AES-256-GCM encrypted with passphrase
+├── kanban/
+│   └── board-name.json.enc       # ← AES-256-GCM encrypted with passphrase
+```
+
+**Key point**: When you commit, Holocron automatically encrypts your plaintext `.md` files into `.md.enc` files before they go into Git. Your plaintext notes **never leave your computer**.
+
+### The Encryption Flow
+
+**When you commit (Save to Git):**
+```
+Local: note.md (plaintext)
+   → Encrypt with passphrase
+      → Git: note.md.enc (encrypted)
+```
+
+**When you pull (Load from Git):**
+```
+Git: note.md.enc (encrypted)
+   → Decrypt with passphrase
+      → Local: note.md (plaintext)
+```
+
+**When you edit (Daily use):**
+```
+Local: note.md (plaintext)
+   → No encryption
+      → Fast, seamless editing
+```
+
+### Why This Design?
+
+✅ **Fast editing** - No encryption/decryption overhead during normal use
+✅ **Secure sync** - Notes encrypted when syncing to remote Git
+✅ **Safe for public repos** - Even if your Git repo is public, notes are encrypted
+✅ **No passphrase prompts** - Stored securely in machine-encrypted config
+✅ **Cross-device sync** - Each machine decrypts incoming commits automatically
+
+### Important Security Notes
+
+- **Your plaintext `.md` files only exist on your computer** - they never get committed to Git
+- **Only encrypted `.md.enc` files go into Git** - safe to push to GitHub, Bitbucket, etc.
+- **Without your passphrase**, even if someone clones your Git repository, they cannot decrypt the `.md.enc` files
+- **The `config.json.enc` is encrypted with your passphrase** - same config works on all your devices
+- **Cross-device sync works seamlessly** - pull on Mac, Windows, Linux - just enter the same passphrase
 
 ---
 

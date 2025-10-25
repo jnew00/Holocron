@@ -7,7 +7,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LocalNote",
+  title: "Holocron",
   description: "Personal, local-first encrypted note-taker with mini-kanban",
 };
 

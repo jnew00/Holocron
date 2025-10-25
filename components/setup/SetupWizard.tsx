@@ -20,7 +20,7 @@ type WizardStep = "welcome" | "select-directory" | "create-passphrase" | "unlock
 
 export function SetupWizard() {
   const { setRepo, setRepoPath } = useRepo();
-  const [step, setStep] = useState<WizardStep>("welcome");
+  const [step, setStep] = useState<WizardStep>("select-directory");
   const [directoryPath, setDirectoryPath] = useState<string | null>(null);
   const [passphrase, setPassphrase] = useState("");
   const [confirmPassphrase, setConfirmPassphrase] = useState("");
@@ -228,14 +228,11 @@ export function SetupWizard() {
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => setStep("welcome")}>
-            Back
-          </Button>
+        <CardFooter>
           <Button
             onClick={handleSelectDirectory}
             disabled={loading}
-            className="flex-1"
+            className="w-full"
           >
             {loading ? (
               <>

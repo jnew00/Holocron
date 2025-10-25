@@ -6,6 +6,7 @@ import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { TiptapEditor } from "@/components/editor/TiptapEditor";
 import { TemplateSelector } from "@/components/templates/TemplateSelector";
+import { TemplateManager } from "@/components/templates/TemplateManager";
 import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { BoardManagement } from "@/components/kanban/BoardManagement";
 import { NotesSidebar } from "@/components/notes/NotesSidebar";
@@ -50,6 +51,7 @@ export default function Home() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [kanbanBoards, setKanbanBoards] = useState<KanbanBoardType[]>([]);
+  const [activeTab, setActiveTab] = useState("notes");
 
   // Helper function to generate note path
   const generateNotePath = (title: string, createdAt: string): string => {
@@ -241,6 +243,7 @@ export default function Home() {
         setCurrentNote(note);
         setMarkdown(markdownContent); // Only show content, not frontmatter
         setNoteFrontmatter(frontmatter); // Store frontmatter separately
+        setActiveTab("notes"); // Switch to notes tab
       }
     } catch (error) {
       console.error("Failed to load note:", error);
@@ -397,8 +400,8 @@ export default function Home() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            {!isFullscreen && <TemplateSelector onSelectTemplate={handleTemplateSelect} />}
             <BoardManagement boards={kanbanBoards} onBoardsChange={() => setRefreshTrigger(prev => prev + 1)} />
+            <TemplateSelector onSelectTemplate={handleTemplateSelect} />
             <GitSync />
             <SettingsDialog />
           </div>
@@ -434,9 +437,9 @@ export default function Home() {
         )}
 
         <main className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <Tabs defaultValue="notes" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="relative flex-1 flex flex-col min-h-0">
             {!isFullscreen && (
-              <div className="border-b px-4 flex items-center justify-between">
+              <div className="border-b px-4 flex items-center justify-between flex-shrink-0">
                 <TabsList>
                   <TabsTrigger value="notes" className="flex items-center gap-2">
                     <FileText className="h-4 w-4" />
@@ -492,7 +495,7 @@ export default function Home() {
               </div>
             )}
 
-            <TabsContent value="notes" className="m-0 p-6 h-full flex flex-col">
+            <TabsContent value="notes" className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0">
               {currentNote ? (
                 <div className="flex-1 min-h-0">
                   <TiptapEditor
@@ -517,13 +520,15 @@ export default function Home() {
               <TabsContent
                 key={board.id}
                 value={`kanban-${board.id}`}
-                className="flex-1 overflow-auto m-0 p-6"
+                className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0"
               >
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex-shrink-0 flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold">{board.name}</h2>
                   <KanbanSyntaxHelp />
                 </div>
-                <KanbanBoard boardId={board.id} onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)} />
+                <div className="flex-1 min-h-0 h-0 overflow-y-auto">
+                  <KanbanBoard boardId={board.id} onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)} />
+                </div>
               </TabsContent>
             ))}
           </Tabs>

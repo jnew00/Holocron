@@ -214,15 +214,16 @@ export function syncTasksToBoard(
 
     // Check if this card already existed on the board
     const existingColumnId = cardToColumnMap.get(card.id);
-    if (existingColumnId) {
-      // EXISTING CARD: Keep it in its current column (don't move it)
+
+    if (extracted?.completed) {
+      // COMPLETED TASKS: Always move to Done (last column), even if they existed before
+      targetColumn = updatedColumns[updatedColumns.length - 1];
+    } else if (existingColumnId) {
+      // EXISTING CARD (not completed): Keep it in its current column (don't move it)
       targetColumn = updatedColumns.find(col => col.id === existingColumnId);
     } else {
-      // NEW CARD: Place based on annotation or defaults
-      if (extracted?.completed) {
-        // Completed tasks go to last column (typically "Done")
-        targetColumn = updatedColumns[updatedColumns.length - 1];
-      } else if (extracted?.column && extracted.column !== "") {
+      // NEW CARD (not completed): Place based on annotation or defaults
+      if (extracted?.column && extracted.column !== "") {
         // If column is specified, try to find it by title (case-insensitive, ignoring hyphens vs spaces)
         const normalizedSearch = extracted.column.toLowerCase().replace(/[-\s]/g, '');
         targetColumn = updatedColumns.find(

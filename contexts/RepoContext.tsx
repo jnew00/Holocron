@@ -1,11 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { SecureString } from "@/lib/security/SecureString";
 
 interface RepoContextType {
   repoPath: string | null;
   isUnlocked: boolean;
-  passphrase: string | null;
+  passphrase: string | null; // DEPRECATED: Use getPassphrase() instead
+  getPassphrase: () => string | null; // Secure accessor
   setRepo: (path: string, passphrase: string) => void;
   setRepoPath: (path: string) => void;
   lock: () => void;
@@ -15,17 +17,17 @@ const RepoContext = createContext<RepoContextType | undefined>(undefined);
 
 export function RepoProvider({ children }: { children: React.ReactNode }) {
   const [repoPath, setRepoPathState] = useState<string | null>(null);
-  const [passphrase, setPassphrase] = useState<string | null>(null);
+  // Store passphrase as SecureString to prevent logging
+  const [securePassphrase, setSecurePassphrase] = useState<SecureString | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
 
   // Load repo path and passphrase from config on mount
   useEffect(() => {
     const loadConfig = async () => {
       const savedPath = localStorage.getItem("localnote-repo-path");
-      console.log("[RepoContext] Saved path from localStorage:", savedPath);
 
       if (!savedPath) {
-        console.log("[RepoContext] No saved path, showing setup wizard");
+        // No saved path - user needs to go through setup
         return;
       }
 
@@ -34,27 +36,20 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
       try {
         // Try to load encrypted config
         const response = await fetch(`/api/config/read?repoPath=${encodeURIComponent(savedPath)}`);
-        console.log("[RepoContext] Config API response status:", response.status);
 
         if (response.ok) {
           const { config } = await response.json();
-          console.log("[RepoContext] Config loaded, has passphrase:", !!config.passphrase);
 
           // Auto-unlock with stored passphrase
           if (config.passphrase) {
-            setPassphrase(config.passphrase);
+            // Store as SecureString to prevent logging
+            setSecurePassphrase(SecureString.create(config.passphrase, 'passphrase'));
             setIsUnlocked(true);
-            console.log("[RepoContext] Auto-unlocked with stored passphrase");
-          } else {
-            console.log("[RepoContext] No passphrase in config");
           }
-        } else {
-          const errorData = await response.json();
-          console.error("[RepoContext] Config API error:", errorData);
         }
       } catch (error) {
-        console.error("[RepoContext] Failed to load config:", error);
         // If config fails to load, user will need to unlock manually
+        // Don't log the error details to avoid leaking information
       }
     };
 
@@ -67,23 +62,34 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const lock = useCallback(() => {
-    setPassphrase(null);
+    // Clear secure passphrase
+    if (securePassphrase) {
+      securePassphrase.clear();
+    }
+    setSecurePassphrase(null);
     setIsUnlocked(false);
-  }, []);
+  }, [securePassphrase]);
 
   const setRepo = useCallback((path: string, pass: string) => {
-    setPassphrase(pass);
+    // Store passphrase securely
+    setSecurePassphrase(SecureString.create(pass, 'passphrase'));
     setIsUnlocked(true);
     setRepoPath(path);
-    // Auto-lock removed - passphrase now persists in encrypted config
   }, [setRepoPath]);
+
+  // Secure accessor for passphrase
+  const getPassphrase = useCallback((): string | null => {
+    return securePassphrase?.reveal() ?? null;
+  }, [securePassphrase]);
 
   return (
     <RepoContext.Provider
       value={{
         repoPath,
         isUnlocked,
-        passphrase,
+        // DEPRECATED: Maintained for backward compatibility - use getPassphrase() instead
+        passphrase: securePassphrase?.reveal() ?? null,
+        getPassphrase,
         setRepo,
         setRepoPath,
         lock,

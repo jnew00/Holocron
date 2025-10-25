@@ -171,7 +171,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (readResponse.ok) {
           const data = await readResponse.json();
           existingConfig = data.config || existingConfig;
-          console.log("[SettingsContext] Existing config has passphrase:", !!existingConfig.passphrase);
         }
 
         // CRITICAL: Don't save settings if we might lose the passphrase
@@ -184,8 +183,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             // Explicitly preserve passphrase (critical!)
             passphrase: existingConfig.passphrase,
           };
-
-          console.log("[SettingsContext] Saving config WITH passphrase preserved");
 
           // Write updated config
           await fetch("/api/config/write", {

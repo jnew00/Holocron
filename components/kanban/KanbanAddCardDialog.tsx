@@ -3,11 +3,9 @@
  * Handles title, description, and column selection
  */
 
-import { memo, useState } from "react";
+import { memo } from "react";
 import { KanbanBoard } from "@/lib/kanban/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +16,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
+import { useAddCard } from "@/hooks/useAddCard";
+import { AddCardForm } from "./AddCardForm";
 
 interface KanbanAddCardDialogProps {
   open: boolean;
@@ -32,20 +32,15 @@ export const KanbanAddCardDialog = memo(function KanbanAddCardDialog({
   onAddCard,
   columns,
 }: KanbanAddCardDialogProps) {
-  const [newCardTitle, setNewCardTitle] = useState("");
-  const [newCardDescription, setNewCardDescription] = useState("");
-  const [newCardColumn, setNewCardColumn] = useState(columns[0]?.id || "todo");
-
-  const handleAddCard = () => {
-    if (!newCardTitle.trim()) return;
-
-    onAddCard(newCardTitle, newCardDescription || undefined, newCardColumn);
-
-    // Reset form
-    setNewCardTitle("");
-    setNewCardDescription("");
-    onOpenChange(false);
-  };
+  const {
+    newCardTitle,
+    setNewCardTitle,
+    newCardDescription,
+    setNewCardDescription,
+    newCardColumn,
+    setNewCardColumn,
+    handleAddCard,
+  } = useAddCard({ onAddCard, onOpenChange, columns });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,41 +57,15 @@ export const KanbanAddCardDialog = memo(function KanbanAddCardDialog({
             Create a new card for your Kanban board
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="card-title">Title</Label>
-            <Input
-              id="card-title"
-              value={newCardTitle}
-              onChange={(e) => setNewCardTitle(e.target.value)}
-              placeholder="Enter card title..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="card-description">Description (optional)</Label>
-            <Input
-              id="card-description"
-              value={newCardDescription}
-              onChange={(e) => setNewCardDescription(e.target.value)}
-              placeholder="Enter description..."
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="card-column">Column</Label>
-            <select
-              id="card-column"
-              value={newCardColumn}
-              onChange={(e) => setNewCardColumn(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {columns.map((col) => (
-                <option key={col.id} value={col.id}>
-                  {col.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+        <AddCardForm
+          newCardTitle={newCardTitle}
+          setNewCardTitle={setNewCardTitle}
+          newCardDescription={newCardDescription}
+          setNewCardDescription={setNewCardDescription}
+          newCardColumn={newCardColumn}
+          setNewCardColumn={setNewCardColumn}
+          columns={columns}
+        />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel

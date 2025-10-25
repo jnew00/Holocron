@@ -56,7 +56,7 @@ function getCrypto(): Crypto {
  */
 async function deriveKey(
   passphrase: string,
-  salt: Uint8Array
+  salt: BufferSource
 ): Promise<CryptoKey> {
   const crypto = getCrypto();
   const encoder = new TextEncoder();
@@ -252,7 +252,7 @@ export class CryptoError extends Error {
  * Base64 encoding (browser + Node.js compatible)
  */
 function base64Encode(data: Uint8Array): string {
-  if (typeof window !== 'undefined' && window.btoa) {
+  if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
     // Browser - use chunking for large data to avoid stack overflow
     const CHUNK_SIZE = 8192;
     let result = '';
@@ -260,7 +260,7 @@ function base64Encode(data: Uint8Array): string {
       const chunk = data.slice(i, i + CHUNK_SIZE);
       result += String.fromCharCode(...chunk);
     }
-    return btoa(result);
+    return window.btoa(result);
   } else {
     // Node.js
     return Buffer.from(data).toString('base64');
@@ -271,9 +271,9 @@ function base64Encode(data: Uint8Array): string {
  * Base64 decoding (browser + Node.js compatible)
  */
 function base64Decode(encoded: string): Uint8Array {
-  if (typeof window !== 'undefined' && window.atob) {
+  if (typeof window !== 'undefined' && typeof window.atob === 'function') {
     // Browser
-    return Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+    return Uint8Array.from(window.atob(encoded), c => c.charCodeAt(0));
   } else {
     // Node.js
     return new Uint8Array(Buffer.from(encoded, 'base64'));

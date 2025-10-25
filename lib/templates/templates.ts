@@ -3,7 +3,7 @@
  * Provides pre-defined structures for common note types
  */
 
-import { NoteType } from "@/lib/notes/noteManager";
+import { NoteType } from "@/lib/notes/types";
 
 export interface NoteTemplate {
   id: string;

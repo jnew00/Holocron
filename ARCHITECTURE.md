@@ -47,13 +47,15 @@ Git Repository:
 - When: During `git commit` and `git pull`
 - Purpose: Secure notes in remote repository (Bitbucket)
 
-**Layer 2: Machine Key Encryption** (for config)
+**Layer 2: Passphrase-Based Config Encryption** (cross-device compatible)
 - Algorithm: AES-256-GCM with PBKDF2 key derivation
 - Input: Passphrase from user
 - Output: Encrypted config file
-- Key Derivation: `hostname + platform + architecture → PBKDF2 → 32-byte key`
+- Key Derivation: **Fixed salt** (`"localnote-config-salt-v1"`) + passphrase → PBKDF2 → 32-byte key
 - When: During setup and passphrase changes
-- Purpose: Store passphrase securely, safe to commit to Git
+- Purpose: Store passphrase securely, safe to commit to Git, **works across all devices**
+
+**Note:** Previously used machine-specific encryption (hostname + platform + arch), but this was replaced in PR 1.3 with passphrase-based encryption to enable cross-device sync.
 
 #### Why Two Layers?
 
@@ -75,19 +77,26 @@ This enables:
 
 ### 3. File Operations
 
-#### Browser vs Server
+#### Server-Side Only Architecture
 
-**OLD (Complex):**
-- Browser FileSystemDirectoryHandle API
-- Sandboxed, can't access real paths
-- Encrypted every file read/write
-- Confusing dual-path system
+**IMPORTANT:** Holocron uses **server-side file operations exclusively**. There is NO browser-based File System Access API code in production.
 
-**NEW (Simple):**
-- Server-side Node.js file operations
-- Full filesystem access
-- Plaintext locally (fast)
-- Encrypt only at Git boundary
+**Rationale:**
+- ✅ Full filesystem access (no sandboxing)
+- ✅ Native OS folder picker
+- ✅ Git CLI integration (SSH keys, etc.)
+- ✅ Simpler architecture (single code path)
+- ✅ Better performance (no encryption overhead on every file access)
+
+**Legacy Code Removed (PR 1.3):**
+- ❌ `lib/notes/noteManager.ts` — File System Access API implementation (DELETED)
+- ❌ `lib/fs/repo.ts` — Browser FS operations (DELETED)
+- ❌ `lib/git/cli.ts` — Browser Git placeholder (DELETED)
+- ❌ `lib/git/gitOperations.ts` — isomorphic-git (DELETED)
+- ❌ `lib/security/machineKey.ts` — Replaced by passphrase-based encryption (DELETED)
+
+**Current Implementation:**
+All file operations go through Next.js API routes (`/app/api/*`) which use Node.js `fs` module and system `git` CLI.
 
 #### API Routes
 

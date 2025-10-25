@@ -2,7 +2,7 @@
  * Custom template management - save, load, delete user-created templates
  */
 
-import { encrypt, decrypt } from "@/lib/crypto/aesgcm";
+import { encryptString, decryptString } from "@/lib/crypto/unified";
 import { NoteTemplate } from "./templates";
 
 const CUSTOM_TEMPLATES_FILE = "config/custom-templates.json.enc";
@@ -19,7 +19,7 @@ export async function loadCustomTemplates(
     const fileHandle = await configDir.getFileHandle("custom-templates.json.enc");
     const file = await fileHandle.getFile();
     const encryptedContent = await file.text();
-    const decryptedContent = await decrypt(encryptedContent, passphrase);
+    const decryptedContent = await decryptString(encryptedContent, passphrase);
     return JSON.parse(decryptedContent);
   } catch (error) {
     // File doesn't exist yet, return empty array
@@ -36,7 +36,7 @@ export async function saveCustomTemplates(
   passphrase: string
 ): Promise<void> {
   const configDir = await dirHandle.getDirectoryHandle("config", { create: true });
-  const encryptedContent = await encrypt(JSON.stringify(templates, null, 2), passphrase);
+  const encryptedContent = await encryptString(JSON.stringify(templates, null, 2), passphrase);
 
   const fileHandle = await configDir.getFileHandle("custom-templates.json.enc", {
     create: true,

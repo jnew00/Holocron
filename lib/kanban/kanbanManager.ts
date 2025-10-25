@@ -2,7 +2,7 @@
  * Kanban board persistence and management
  */
 
-import { encrypt, decrypt } from "@/lib/crypto/aesgcm";
+import { encryptString, decryptString } from "@/lib/crypto/unified";
 import { KanbanBoard, createDefaultBoard } from "./types";
 
 const KANBAN_FILE = "kanban/board.json.enc";
@@ -19,7 +19,7 @@ export async function loadBoard(
     const fileHandle = await kanbanDir.getFileHandle("board.json.enc");
     const file = await fileHandle.getFile();
     const encryptedContent = await file.text();
-    const decryptedContent = await decrypt(encryptedContent, passphrase);
+    const decryptedContent = await decryptString(encryptedContent, passphrase);
     return JSON.parse(decryptedContent);
   } catch (error) {
     // Return default board if file doesn't exist
@@ -36,7 +36,7 @@ export async function saveBoard(
   passphrase: string
 ): Promise<void> {
   const kanbanDir = await dirHandle.getDirectoryHandle("kanban", { create: true });
-  const encryptedContent = await encrypt(JSON.stringify(board, null, 2), passphrase);
+  const encryptedContent = await encryptString(JSON.stringify(board, null, 2), passphrase);
 
   const fileHandle = await kanbanDir.getFileHandle("board.json.enc", {
     create: true,

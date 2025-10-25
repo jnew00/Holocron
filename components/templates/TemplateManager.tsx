@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileEdit, Plus, Edit, Trash2, FileText } from "lucide-react";
-import { NoteType } from "@/lib/notes/noteManager";
+import { NoteType } from "@/lib/notes/types";
 
 export function TemplateManager() {
   // TODO: This component needs to be updated to use repoPath instead of dirHandle

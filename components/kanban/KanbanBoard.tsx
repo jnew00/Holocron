@@ -418,8 +418,13 @@ ${doneColumn.cards.map((card) => {
   };
 
   const handleSyncFromNotes = async () => {
-    if (!repoPath || !isLoaded) return; // Don't sync until board is loaded!
+    console.log('[SYNC] handleSyncFromNotes called, repoPath:', !!repoPath, 'isLoaded:', isLoaded);
+    if (!repoPath || !isLoaded) {
+      console.log('[SYNC] Skipping sync - board not loaded yet');
+      return; // Don't sync until board is loaded!
+    }
 
+    console.log('[SYNC] Starting sync from notes...');
     setIsSyncing(true);
     try {
       // Fetch all notes
@@ -486,12 +491,14 @@ ${doneColumn.cards.map((card) => {
     }
   }, [repoPath, boardId]);
 
-  // Sync from notes when syncTrigger changes
+  // Sync from notes when syncTrigger changes OR when board finishes loading
   useEffect(() => {
-    if (repoPath && boardId && syncTrigger && syncTrigger > 0) {
+    console.log('[BOARD-SYNC] syncTrigger:', syncTrigger, 'isLoaded:', isLoaded);
+    if (repoPath && boardId && syncTrigger && syncTrigger > 0 && isLoaded) {
+      console.log('[BOARD-SYNC] Calling handleSyncFromNotes()');
       handleSyncFromNotes();
     }
-  }, [syncTrigger]);
+  }, [syncTrigger, isLoaded]); // Now also triggers when isLoaded changes
 
   // NOTE: Auto-sync disabled to prevent cards from disappearing
   // Users can manually sync using the "Sync from Notes" button

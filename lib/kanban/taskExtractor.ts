@@ -210,9 +210,10 @@ export function syncTasksToBoard(
       // Completed tasks go to last column (typically "Done")
       targetColumn = updatedColumns[updatedColumns.length - 1];
     } else if (extracted?.column && extracted.column !== "") {
-      // If column is specified, try to find it by title (case-insensitive)
+      // If column is specified, try to find it by title (case-insensitive, ignoring hyphens vs spaces)
+      const normalizedSearch = extracted.column.toLowerCase().replace(/[-\s]/g, '');
       targetColumn = updatedColumns.find(
-        (col) => col.title.toLowerCase() === extracted.column.toLowerCase()
+        (col) => col.title.toLowerCase().replace(/[-\s]/g, '') === normalizedSearch
       );
     }
 

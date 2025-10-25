@@ -373,14 +373,20 @@ ${doneColumn.cards.map((card) => {
         const data = await response.json();
         const loadedBoard = JSON.parse(data.content);
         setBoard(loadedBoard);
+      } else if (response.status === 404) {
+        // Only create default board if file doesn't exist (404)
+        console.log("Board not found, creating default board");
+        const defaultBoard = createDefaultBoard();
+        defaultBoard.id = boardId;
+        setBoard(defaultBoard);
+        await saveBoard(defaultBoard);
+      } else {
+        // For other errors (permissions, etc), don't overwrite - just log
+        console.error("Failed to load board, status:", response.status);
       }
     } catch (error) {
-      console.error("Failed to load board:", error);
-      // Create default board if doesn't exist
-      const defaultBoard = createDefaultBoard();
-      defaultBoard.id = boardId;
-      setBoard(defaultBoard);
-      await saveBoard(defaultBoard);
+      // For parse errors or network errors, don't overwrite the board
+      console.error("Error loading board:", error);
     }
   };
 

@@ -62,25 +62,18 @@ export default function Home() {
     currentNoteRef.current = currentNote;
   }, [currentNote]);
 
-  // Refs to track board sync status
-  const boardSyncRefs = useRef<Map<string, boolean>>(new Map());
+  // Track previous tab to know when we switch TO kanban
+  const previousTabRef = useRef<string>("notes");
   const previousTitleRef = useRef<string>("");
 
   // Auto-sync kanban board when switching to a board tab
   useEffect(() => {
-    if (activeTab.startsWith("kanban-")) {
-      const boardId = activeTab.replace("kanban-", "");
-      // Only sync if we haven't synced this board recently
-      if (!boardSyncRefs.current.get(boardId)) {
-        boardSyncRefs.current.set(boardId, true);
-        // Trigger board sync via separate trigger (not refreshTrigger)
-        setBoardSyncTrigger((prev) => prev + 1);
-        // Reset sync flag after 5 seconds
-        setTimeout(() => {
-          boardSyncRefs.current.set(boardId, false);
-        }, 5000);
-      }
+    if (activeTab.startsWith("kanban-") && previousTabRef.current !== activeTab) {
+      // Switched TO a kanban board - trigger sync
+      setBoardSyncTrigger((prev) => prev + 1);
     }
+    // Update previous tab for next comparison
+    previousTabRef.current = activeTab;
   }, [activeTab]);
 
   // Helper function to generate note path

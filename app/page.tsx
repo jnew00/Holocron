@@ -492,9 +492,9 @@ export default function Home() {
               </div>
             )}
 
-            <TabsContent value="notes" className="flex-1 m-0 p-6 flex flex-col min-h-0">
+            <TabsContent value="notes" className="flex-1 m-0 p-6 flex flex-col overflow-hidden">
               {currentNote ? (
-                <div className="flex-1 min-h-0">
+                <div className="flex-1 overflow-hidden">
                   <TiptapEditor
                     content={markdown}
                     onChange={setMarkdown}

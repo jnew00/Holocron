@@ -55,6 +55,7 @@ export function KanbanBoard({ boardId, onBoardUpdate, syncTrigger }: KanbanBoard
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingColumns, setEditingColumns] = useState(board.columns);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false); // Track if board has been loaded from disk
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -373,12 +374,14 @@ ${doneColumn.cards.map((card) => {
         const data = await response.json();
         const loadedBoard = JSON.parse(data.content);
         setBoard(loadedBoard);
+        setIsLoaded(true); // Mark as loaded
       } else if (response.status === 404) {
         // Only create default board if file doesn't exist (404)
         console.log("Board not found, creating default board");
         const defaultBoard = createDefaultBoard();
         defaultBoard.id = boardId;
         setBoard(defaultBoard);
+        setIsLoaded(true); // Mark as loaded
         await saveBoard(defaultBoard);
       } else {
         // For other errors (permissions, etc), don't overwrite - just log
@@ -501,16 +504,16 @@ ${doneColumn.cards.map((card) => {
   //   }
   // }, [repoPath, boardId]);
 
-  // Auto-save board when it changes
+  // Auto-save board when it changes (but only after initial load)
   useEffect(() => {
-    if (repoPath && board.id) {
+    if (repoPath && board.id && isLoaded) {
       const timeoutId = setTimeout(() => {
         saveBoard();
       }, 1000);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [board, repoPath]);
+  }, [board, repoPath, isLoaded]);
 
   return (
     <div className="w-full">

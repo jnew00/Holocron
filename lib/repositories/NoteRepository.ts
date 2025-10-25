@@ -52,7 +52,7 @@ export class NoteRepository extends BaseRepository {
   /**
    * Read a specific note
    */
-  async read(notePath: string): Promise<{ content: string; metadata?: any }> {
+  async read(notePath: string): Promise<{ content: string; metadata?: any; modified: string }> {
     const url = this.buildUrl("/api/notes/read", {
       repoPath: this.repoPath,
       notePath,

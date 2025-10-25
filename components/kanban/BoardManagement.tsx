@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { LayoutDashboard, Plus, Trash2, Edit2, Upload } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { KanbanRepository, RepositoryError } from "@/lib/repositories";
 
 interface BoardManagementProps {
   boards: KanbanBoardType[];
@@ -47,27 +48,11 @@ export function BoardManagement({ boards, onBoardsChange }: BoardManagementProps
     newBoard.name = newBoardName;
     newBoard.icon = newBoardIcon || undefined;
 
-    const notePath = `kanban/${boardId}.json`;
-    console.log("Writing board to:", notePath);
     console.log("Board data:", newBoard);
 
     try {
-      const response = await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: notePath,
-          content: JSON.stringify(newBoard, null, 2),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Board creation failed:", response.status, errorText);
-        alert(`Failed to create board: ${errorText}`);
-        return;
-      }
+      const kanbanRepo = new KanbanRepository(repoPath);
+      await kanbanRepo.saveBoard(newBoard);
 
       console.log("Board created successfully");
       setNewBoardName("");
@@ -75,8 +60,13 @@ export function BoardManagement({ boards, onBoardsChange }: BoardManagementProps
       setIsOpen(false); // Close the dialog
       onBoardsChange(); // Trigger parent refresh
     } catch (error) {
-      console.error("Failed to create board:", error);
-      alert(`Error creating board: ${error}`);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to create board:", error.message);
+        alert(`Failed to create board: ${error.message}`);
+      } else {
+        console.error("Failed to create board:", error);
+        alert(`Error creating board: ${error}`);
+      }
     }
   };
 
@@ -91,20 +81,17 @@ export function BoardManagement({ boards, onBoardsChange }: BoardManagementProps
     };
 
     try {
-      await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: `kanban/${updatedBoard.id}.json`,
-          content: JSON.stringify(updatedBoard, null, 2),
-        }),
-      });
+      const kanbanRepo = new KanbanRepository(repoPath);
+      await kanbanRepo.saveBoard(updatedBoard);
 
       setEditingBoard(null);
       onBoardsChange();
     } catch (error) {
-      console.error("Failed to update board:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to update board:", error.message);
+      } else {
+        console.error("Failed to update board:", error);
+      }
     }
   };
 
@@ -116,14 +103,16 @@ export function BoardManagement({ boards, onBoardsChange }: BoardManagementProps
     }
 
     try {
-      await fetch(
-        `/api/notes/delete?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(`kanban/${boardId}.json`)}`,
-        { method: "DELETE" }
-      );
+      const kanbanRepo = new KanbanRepository(repoPath);
+      await kanbanRepo.deleteBoard(boardId);
 
       onBoardsChange();
     } catch (error) {
-      console.error("Failed to delete board:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to delete board:", error.message);
+      } else {
+        console.error("Failed to delete board:", error);
+      }
     }
   };
 

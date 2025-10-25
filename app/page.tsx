@@ -28,6 +28,7 @@ import {
   Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { NoteRepository, KanbanRepository, RepositoryError } from "@/lib/repositories";
 
 // Note interface (matches old format)
 interface Note {
@@ -105,35 +106,16 @@ export default function Home() {
       console.log("Loading kanban boards...");
 
       try {
-        const response = await fetch(
-          `/api/kanban/list?repoPath=${encodeURIComponent(repoPath)}`
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log("Found board files:", data.boards);
-
-          const boards: KanbanBoardType[] = [];
-          for (const boardFile of data.boards) {
-            try {
-              const boardResponse = await fetch(
-                `/api/notes/read?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(boardFile.path)}`
-              );
-              if (boardResponse.ok) {
-                const boardData = await boardResponse.json();
-                const board = JSON.parse(boardData.content);
-                console.log("Loaded board:", board.name, board.id);
-                boards.push(board);
-              }
-            } catch (err) {
-              console.error(`Failed to load board ${boardFile.path}:`, err);
-            }
-          }
-          console.log("Total boards loaded:", boards.length);
-          setKanbanBoards(boards);
-        }
+        const kanbanRepo = new KanbanRepository(repoPath);
+        const boards = await kanbanRepo.listBoards();
+        console.log("Total boards loaded:", boards.length);
+        setKanbanBoards(boards);
       } catch (error) {
-        console.error("Failed to load kanban boards:", error);
+        if (error instanceof RepositoryError) {
+          console.error("Failed to load kanban boards:", error.message);
+        } else {
+          console.error("Failed to load kanban boards:", error);
+        }
       }
     };
 
@@ -176,25 +158,23 @@ export default function Home() {
 
     // Save the note immediately so it appears in the sidebar
     try {
-      const response = await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: newNote.path,
-          content: contentWithFrontmatter,
-        }),
+      const noteRepo = new NoteRepository(repoPath);
+      await noteRepo.write({
+        notePath: newNote.path,
+        content: contentWithFrontmatter,
       });
 
-      if (response.ok) {
-        setCurrentNote(newNote);
-        setMarkdown(baseContent); // Only show content, not frontmatter
-        setNoteFrontmatter(frontmatter); // Store frontmatter separately
-        previousTitleRef.current = newNote.title; // Initialize title tracking
-        setRefreshTrigger((prev) => prev + 1);
-      }
+      setCurrentNote(newNote);
+      setMarkdown(baseContent); // Only show content, not frontmatter
+      setNoteFrontmatter(frontmatter); // Store frontmatter separately
+      previousTitleRef.current = newNote.title; // Initialize title tracking
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
-      console.error("Failed to create note:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to create note:", error.message);
+      } else {
+        console.error("Failed to create note:", error);
+      }
     }
   };
 
@@ -218,25 +198,23 @@ export default function Home() {
 
     // Save the note immediately so it appears in the sidebar
     try {
-      const response = await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: newNote.path,
-          content: contentWithFrontmatter,
-        }),
+      const noteRepo = new NoteRepository(repoPath);
+      await noteRepo.write({
+        notePath: newNote.path,
+        content: contentWithFrontmatter,
       });
 
-      if (response.ok) {
-        setCurrentNote(newNote);
-        setMarkdown(template.content); // Only show content, not frontmatter
-        setNoteFrontmatter(frontmatter); // Store frontmatter separately
-        previousTitleRef.current = newNote.title; // Initialize title tracking
-        setRefreshTrigger((prev) => prev + 1);
-      }
+      setCurrentNote(newNote);
+      setMarkdown(template.content); // Only show content, not frontmatter
+      setNoteFrontmatter(frontmatter); // Store frontmatter separately
+      previousTitleRef.current = newNote.title; // Initialize title tracking
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
-      console.error("Failed to create note from template:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to create note from template:", error.message);
+      } else {
+        console.error("Failed to create note from template:", error);
+      }
     }
   };
 
@@ -244,37 +222,36 @@ export default function Home() {
     if (!repoPath) return;
 
     try {
-      const response = await fetch(
-        `/api/notes/read?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(notePath)}`
-      );
+      const noteRepo = new NoteRepository(repoPath);
+      const data = await noteRepo.read(notePath);
 
-      if (response.ok) {
-        const data = await response.json();
+      // Extract frontmatter and metadata from content
+      const { data: frontmatter, content: markdownContent } = extractFrontmatter(data.content);
+      const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
+      const title = titleMatch ? titleMatch[1] : "Untitled";
 
-        // Extract frontmatter and metadata from content
-        const { data: frontmatter, content: markdownContent } = extractFrontmatter(data.content);
-        const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
-        const title = titleMatch ? titleMatch[1] : "Untitled";
+      const note: Note = {
+        id: generateNoteId(), // Generate fresh ID for tracking
+        title,
+        content: data.content,
+        path: notePath,
+        createdAt: data.modified,
+        updatedAt: data.modified,
+        type: frontmatter.type || "note",
+      };
 
-        const note: Note = {
-          id: generateNoteId(), // Generate fresh ID for tracking
-          title,
-          content: data.content,
-          path: notePath,
-          createdAt: data.modified,
-          updatedAt: data.modified,
-          type: frontmatter.type || "note",
-        };
-
-        setCurrentNote(note);
-        setMarkdown(markdownContent); // Only show content, not frontmatter
-        setNoteFrontmatter(frontmatter); // Store frontmatter separately
-        setActiveTab("notes"); // Switch to notes tab
-        // Initialize title tracking
-        previousTitleRef.current = note.title;
-      }
+      setCurrentNote(note);
+      setMarkdown(markdownContent); // Only show content, not frontmatter
+      setNoteFrontmatter(frontmatter); // Store frontmatter separately
+      setActiveTab("notes"); // Switch to notes tab
+      // Initialize title tracking
+      previousTitleRef.current = note.title;
     } catch (error) {
-      console.error("Failed to load note:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to load note:", error.message);
+      } else {
+        console.error("Failed to load note:", error);
+      }
     }
   };
 
@@ -306,31 +283,29 @@ export default function Home() {
         updatedAt: new Date().toISOString(),
       };
 
-      const response = await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: note.path,
-          content: contentToSave,
-        }),
+      const noteRepo = new NoteRepository(repoPath);
+      await noteRepo.write({
+        notePath: note.path,
+        content: contentToSave,
       });
 
-      if (response.ok) {
-        // Update ref directly to avoid re-render, but keep content in sync
-        currentNoteRef.current = updatedNote;
-        setLastSaved(new Date());
+      // Update ref directly to avoid re-render, but keep content in sync
+      currentNoteRef.current = updatedNote;
+      setLastSaved(new Date());
 
-        // Update currentNote state to refresh the header display
-        setCurrentNote(updatedNote);
+      // Update currentNote state to refresh the header display
+      setCurrentNote(updatedNote);
 
-        // Only refresh sidebar if title changed (to update the list)
-        if (titleChanged) {
-          setRefreshTrigger((prev) => prev + 1);
-        }
+      // Only refresh sidebar if title changed (to update the list)
+      if (titleChanged) {
+        setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
-      console.error("Failed to save note:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to save note:", error.message);
+      } else {
+        console.error("Failed to save note:", error);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -340,20 +315,20 @@ export default function Home() {
     if (!repoPath) return;
 
     try {
-      const response = await fetch(
-        `/api/notes/delete?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(notePath)}`,
-        { method: "DELETE" }
-      );
+      const noteRepo = new NoteRepository(repoPath);
+      await noteRepo.deleteNote(notePath);
 
-      if (response.ok) {
-        if (currentNote?.path === notePath) {
-          setCurrentNote(null);
-          setMarkdown("");
-        }
-        setRefreshTrigger((prev) => prev + 1);
+      if (currentNote?.path === notePath) {
+        setCurrentNote(null);
+        setMarkdown("");
       }
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
-      console.error("Failed to delete note:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to delete note:", error.message);
+      } else {
+        console.error("Failed to delete note:", error);
+      }
     }
   };
 
@@ -362,27 +337,18 @@ export default function Home() {
     if (!repoPath) return;
 
     try {
+      const noteRepo = new NoteRepository(repoPath);
+
       // Read the note
-      const readResponse = await fetch(
-        `/api/notes/read?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(notePath)}`
-      );
-
-      if (!readResponse.ok) return;
-
-      const data = await readResponse.json();
+      const data = await noteRepo.read(notePath);
 
       // Create archive path
       const archivePath = `archive/${notePath}`;
 
       // Write to archive
-      await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: archivePath,
-          content: data.content,
-        }),
+      await noteRepo.write({
+        notePath: archivePath,
+        content: data.content,
       });
 
       // Delete original
@@ -390,7 +356,11 @@ export default function Home() {
 
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
-      console.error("Failed to archive note:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to archive note:", error.message);
+      } else {
+        console.error("Failed to archive note:", error);
+      }
     }
   };
 

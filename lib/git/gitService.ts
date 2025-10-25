@@ -1,7 +1,9 @@
 /**
  * Client-side Git service that communicates with Git API routes
- * Uses system Git CLI via Next.js API routes for full Git functionality
+ * Uses GitRepository for data access
  */
+
+import { GitRepository, RepositoryError } from "@/lib/repositories";
 
 export interface GitStatus {
   branch: string;
@@ -65,15 +67,20 @@ export async function getConfig(
   repoPath: string | null
 ): Promise<GitConfig> {
   const path = getRepoPath(repoPath);
+  const gitRepo = new GitRepository(path);
 
-  const response = await fetch(`/api/git/config?repoPath=${encodeURIComponent(path)}`);
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to get Git config");
+  try {
+    const config = await gitRepo.getConfig();
+    return {
+      name: config.name || "",
+      email: config.email || "",
+    };
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -83,19 +90,35 @@ export async function getStatus(
   repoPath: string | null
 ): Promise<GitStatus> {
   const path = getRepoPath(repoPath);
+  const gitRepo = new GitRepository(path);
 
-  const response = await fetch("/api/git/status", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath: path }),
-  });
+  try {
+    const status = await gitRepo.status();
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to get Git status");
+    // Adapt repository response to gitService format
+    return {
+      branch: status.current,
+      modified: status.modified.length,
+      added: status.created.length,
+      deleted: status.deleted.length,
+      untracked: status.untracked.length,
+      ahead: status.ahead,
+      behind: status.behind,
+      hasChanges: status.modified.length > 0 || status.created.length > 0 ||
+                  status.deleted.length > 0 || status.untracked.length > 0,
+      files: {
+        modified: status.modified,
+        added: status.created,
+        deleted: status.deleted,
+        untracked: status.untracked,
+      },
+    };
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  return response.json();
 }
 
 /**
@@ -106,25 +129,17 @@ export async function commit(
   options: CommitOptions
 ): Promise<{ success: boolean; output: string }> {
   const path = getRepoPath(repoPath);
+  const gitRepo = new GitRepository(path);
 
-  const response = await fetch("/api/git/commit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      repoPath: path,
-      message: options.message,
-      author: options.author,
-      passphrase: options.passphrase,
-    }),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || "Failed to commit");
+  try {
+    const result = await gitRepo.commit(options);
+    return { success: result.success, output: result.message };
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  return result;
 }
 
 /**
@@ -136,20 +151,17 @@ export async function push(
   branch?: string
 ): Promise<{ success: boolean; output: string }> {
   const path = getRepoPath(repoPath);
+  const gitRepo = new GitRepository(path);
 
-  const response = await fetch("/api/git/push", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath: path, remote, branch }),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(result.error || "Failed to push");
+  try {
+    const result = await gitRepo.push({ remote, branch });
+    return { success: result.success, output: result.message };
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  return result;
 }
 
 /**
@@ -162,20 +174,22 @@ export async function pull(
   passphrase?: string
 ): Promise<PullResult> {
   const path = getRepoPath(repoPath);
+  const gitRepo = new GitRepository(path);
 
-  const response = await fetch("/api/git/pull", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ repoPath: path, remote, branch, passphrase }),
-  });
-
-  const result = await response.json();
-
-  if (!response.ok && !result.hasConflicts) {
-    throw new Error(result.error || "Failed to pull");
+  try {
+    const result = await gitRepo.pull({ remote, branch, passphrase });
+    // Adapt to PullResult format (assuming no conflicts for now)
+    return {
+      success: result.success,
+      hasConflicts: false,
+      output: result.message,
+    };
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  return result;
 }
 
 /**
@@ -185,16 +199,22 @@ export async function listBranches(
   repoPath: string | null
 ): Promise<GitBranch[]> {
   const path = getRepoPath(repoPath);
+  const gitRepo = new GitRepository(path);
 
-  const response = await fetch(`/api/git/branches?repoPath=${encodeURIComponent(path)}`);
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to list branches");
+  try {
+    const branches = await gitRepo.branches();
+    // Adapt repository format to gitService format
+    return branches.map(b => ({
+      name: b.name,
+      isCurrent: b.current,
+      isRemote: false, // Repository doesn't distinguish remote branches yet
+    }));
+  } catch (error) {
+    if (error instanceof RepositoryError) {
+      throw new Error(error.message);
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  return result.branches;
 }
 
 /**

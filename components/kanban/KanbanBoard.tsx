@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Settings, Trash2, RefreshCw } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { NoteRepository, KanbanRepository, RepositoryError } from "@/lib/repositories";
 
 interface KanbanBoardProps {
   boardId: string;
@@ -254,15 +255,11 @@ export function KanbanBoard({ boardId, onBoardUpdate, syncTrigger }: KanbanBoard
       // Read existing archive file (stored in archive folder)
       const archivePath = "archive/kanban-archive.md";
       let archiveContent = "";
+      const noteRepo = new NoteRepository(repoPath);
 
       try {
-        const response = await fetch(
-          `/api/notes/read?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(archivePath)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          archiveContent = data.content;
-        }
+        const data = await noteRepo.read(archivePath);
+        archiveContent = data.content;
       } catch (err) {
         // Archive file doesn't exist yet, will create it
       }
@@ -286,14 +283,9 @@ ${doneColumn.cards.map((card) => {
         : `# Kanban Archive\n\n${newArchiveSection}`;
 
       // Write archive file
-      await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: archivePath,
-          content: updatedArchiveContent,
-        }),
+      await noteRepo.write({
+        notePath: archivePath,
+        content: updatedArchiveContent,
       });
 
       // Remove archived cards from board
@@ -366,16 +358,12 @@ ${doneColumn.cards.map((card) => {
     if (!repoPath || !boardId) return;
 
     try {
-      const response = await fetch(
-        `/api/notes/read?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(`kanban/${boardId}.json`)}`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const loadedBoard = JSON.parse(data.content);
-        setBoard(loadedBoard);
-        setIsLoaded(true); // Mark as loaded
-      } else if (response.status === 404) {
+      const kanbanRepo = new KanbanRepository(repoPath);
+      const loadedBoard = await kanbanRepo.readBoard(boardId);
+      setBoard(loadedBoard);
+      setIsLoaded(true); // Mark as loaded
+    } catch (error) {
+      if (error instanceof RepositoryError && error.is("NOT_FOUND")) {
         // Only create default board if file doesn't exist (404)
         console.log("Board not found, creating default board");
         const defaultBoard = createDefaultBoard();
@@ -385,11 +373,8 @@ ${doneColumn.cards.map((card) => {
         await saveBoard(defaultBoard);
       } else {
         // For other errors (permissions, etc), don't overwrite - just log
-        console.error("Failed to load board, status:", response.status);
+        console.error("Error loading board:", error);
       }
-    } catch (error) {
-      // For parse errors or network errors, don't overwrite the board
-      console.error("Error loading board:", error);
     }
   };
 
@@ -400,20 +385,17 @@ ${doneColumn.cards.map((card) => {
     const boardData = boardToSave || board;
 
     try {
-      await fetch("/api/notes/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          notePath: `kanban/${boardData.id}.json`,
-          content: JSON.stringify(boardData, null, 2),
-        }),
-      });
+      const kanbanRepo = new KanbanRepository(repoPath);
+      await kanbanRepo.saveBoard(boardData);
 
       // Notify parent to refresh boards list
       onBoardUpdate?.();
     } catch (error) {
-      console.error("Failed to save board:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to save board:", error.message);
+      } else {
+        console.error("Failed to save board:", error);
+      }
     }
   };
 
@@ -422,17 +404,10 @@ ${doneColumn.cards.map((card) => {
 
     setIsSyncing(true);
     try {
+      const noteRepo = new NoteRepository(repoPath);
+
       // Fetch all notes
-      const response = await fetch(
-        `/api/notes/list?repoPath=${encodeURIComponent(repoPath)}`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch notes");
-      }
-
-      const data = await response.json();
-      const notes = data.notes || [];
+      const notes = await noteRepo.list();
 
       // Process each note and sync tasks
       let updatedColumns = board.columns.map(col => ({ ...col, cards: [...col.cards] }));
@@ -444,24 +419,18 @@ ${doneColumn.cards.map((card) => {
         }
 
         try {
-          const noteResponse = await fetch(
-            `/api/notes/read?repoPath=${encodeURIComponent(repoPath)}&notePath=${encodeURIComponent(note.path)}`
+          const noteData = await noteRepo.read(note.path);
+          const noteId = note.path;
+          const noteTitle = note.name.replace('.md', '');
+
+          // Sync tasks from this note for this specific board
+          updatedColumns = syncTasksToBoard(
+            noteData.content,
+            noteId,
+            noteTitle,
+            updatedColumns,
+            boardId // Pass the current board ID
           );
-
-          if (noteResponse.ok) {
-            const noteData = await noteResponse.json();
-            const noteId = note.path;
-            const noteTitle = note.name.replace('.md', '');
-
-            // Sync tasks from this note for this specific board
-            updatedColumns = syncTasksToBoard(
-              noteData.content,
-              noteId,
-              noteTitle,
-              updatedColumns,
-              boardId // Pass the current board ID
-            );
-          }
         } catch (err) {
           console.error(`Failed to process note ${note.path}:`, err);
         }
@@ -473,7 +442,11 @@ ${doneColumn.cards.map((card) => {
         updatedAt: new Date().toISOString(),
       }));
     } catch (error) {
-      console.error("Failed to sync from notes:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to sync from notes:", error.message);
+      } else {
+        console.error("Failed to sync from notes:", error);
+      }
     } finally {
       setIsSyncing(false);
     }

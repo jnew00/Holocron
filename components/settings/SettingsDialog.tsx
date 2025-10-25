@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Settings as SettingsIcon, FolderGit2, Check, Palette, Type, Monitor, Clock } from "lucide-react";
+import { ConfigRepository, RepositoryError } from "@/lib/repositories";
 
 export function SettingsDialog() {
   const { settings, updateSettings } = useSettings();
@@ -48,26 +49,25 @@ export function SettingsDialog() {
     }
 
     try {
-      const response = await fetch("/api/config/write", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath,
-          config: {
-            version: "1.0",
-            passphrase: passphraseInput.trim(),
-            updatedAt: new Date().toISOString(),
-          },
-        }),
-      });
+      const configRepo = new ConfigRepository(repoPath);
+      await configRepo.write(
+        {
+          version: "1.0",
+          passphrase: passphraseInput.trim(),
+          updatedAt: new Date().toISOString(),
+        },
+        passphraseInput.trim()
+      );
 
-      if (response.ok) {
-        setPassphraseSaved(true);
-        setTimeout(() => setPassphraseSaved(false), 2000);
-        window.location.reload(); // Reload to pick up new passphrase
-      }
+      setPassphraseSaved(true);
+      setTimeout(() => setPassphraseSaved(false), 2000);
+      window.location.reload(); // Reload to pick up new passphrase
     } catch (error) {
-      console.error("Failed to save passphrase:", error);
+      if (error instanceof RepositoryError) {
+        console.error("Failed to save passphrase:", error.message);
+      } else {
+        console.error("Failed to save passphrase:", error);
+      }
     }
   };
 

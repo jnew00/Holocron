@@ -41,9 +41,10 @@ import { Separator } from "@/components/ui/separator";
 interface KanbanBoardProps {
   boardId: string;
   onBoardUpdate?: () => void;
+  syncTrigger?: number;
 }
 
-export function KanbanBoard({ boardId, onBoardUpdate }: KanbanBoardProps) {
+export function KanbanBoard({ boardId, onBoardUpdate, syncTrigger }: KanbanBoardProps) {
   const { repoPath } = useRepo();
   const [board, setBoard] = useState<KanbanBoardType>(createDefaultBoard());
   const [activeCard, setActiveCard] = useState<KanbanCardType | null>(null);
@@ -475,6 +476,13 @@ ${doneColumn.cards.map((card) => {
       loadBoard();
     }
   }, [repoPath, boardId]);
+
+  // Sync from notes when syncTrigger changes
+  useEffect(() => {
+    if (repoPath && boardId && syncTrigger && syncTrigger > 0) {
+      handleSyncFromNotes();
+    }
+  }, [syncTrigger]);
 
   // NOTE: Auto-sync disabled to prevent cards from disappearing
   // Users can manually sync using the "Sync from Notes" button

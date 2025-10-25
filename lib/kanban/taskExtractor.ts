@@ -61,15 +61,15 @@ export function extractKanbanTasks(
     if (boardOrKanban?.toLowerCase() === "kanban") {
       // @kanban or @kanban:column → use default board
       boardId = undefined; // Will use default board
-      columnName = column1 || column2 || "Backlog";
+      columnName = column1 || column2 || "To Do";
     } else if (boardOrKanban) {
       // @board-id or @board-id:column → specific board
       boardId = boardOrKanban;
-      columnName = column1 || "Backlog";
+      columnName = column1 || "To Do";
     } else {
       // #kanban or #kanban:column → use default board
       boardId = undefined;
-      columnName = column2 || "Backlog";
+      columnName = column2 || "To Do";
     }
 
     // First, strip HTML tags (mentions are wrapped in HTML)
@@ -195,17 +195,42 @@ export function syncTasksToBoard(
       // Completed tasks go to Done column
       targetColumnName = "Done";
     } else {
-      // Use the specified column or default to first column
+      // Use the specified column or default to "To Do"
       targetColumnName = extracted?.column || "To Do";
     }
 
     // Find column by title (case-insensitive)
-    const column = updatedColumns.find(
+    let targetColumn = updatedColumns.find(
       (col) => col.title.toLowerCase() === targetColumnName.toLowerCase()
     );
 
-    // Fallback to first column if target not found
-    const targetColumn = column || updatedColumns[0];
+    // If target column not found, try to find a TODO-like column
+    if (!targetColumn && !extracted?.completed) {
+      // Try to find column by ID "todo"
+      targetColumn = updatedColumns.find((col) => col.id.toLowerCase() === "todo");
+
+      // If not found, try to find any column with "todo" or "to do" in the title
+      if (!targetColumn) {
+        targetColumn = updatedColumns.find(
+          (col) => col.title.toLowerCase().includes("todo") ||
+                  col.title.toLowerCase().includes("to do") ||
+                  col.title.toLowerCase().includes("to-do")
+        );
+      }
+
+      // If still not found, find the first column that's not "Done"
+      if (!targetColumn) {
+        targetColumn = updatedColumns.find(
+          (col) => col.title.toLowerCase() !== "done" &&
+                  !col.title.toLowerCase().includes("done")
+        );
+      }
+    }
+
+    // Final fallback: use first column
+    if (!targetColumn) {
+      targetColumn = updatedColumns[0];
+    }
 
     if (targetColumn) {
       targetColumn.cards.push(card);

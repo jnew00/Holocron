@@ -1,0 +1,320 @@
+@import 'tippy.js/dist/tippy.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  }
+}
+
+/* Density Classes */
+.density-compact {
+  --spacing-unit: 0.75rem;
+}
+
+.density-comfortable {
+  --spacing-unit: 1rem;
+}
+
+.density-spacious {
+  --spacing-unit: 1.5rem;
+}
+
+.density-compact .p-4 {
+  padding: calc(var(--spacing-unit) * 0.75);
+}
+
+.density-spacious .p-4 {
+  padding: calc(var(--spacing-unit) * 1.25);
+}
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+  outline: none;
+  font-family: var(--font-editor, ui-monospace, monospace);
+}
+
+/* Table Styles */
+.ProseMirror table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  overflow: hidden;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  border: 2px solid hsl(var(--border));
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 0.5em;
+  position: relative;
+  vertical-align: top;
+}
+
+.ProseMirror table th {
+  background-color: hsl(var(--muted));
+  font-weight: 600;
+  text-align: left;
+}
+
+.ProseMirror table .selectedCell:after {
+  background: hsl(var(--primary) / 0.1);
+  content: "";
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.ProseMirror table .column-resize-handle {
+  background-color: hsl(var(--primary));
+  bottom: -2px;
+  position: absolute;
+  right: -2px;
+  pointer-events: none;
+  top: 0;
+  width: 4px;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+}
+
+.ProseMirror .task-list {
+  list-style: none;
+  padding: 0;
+}
+
+.ProseMirror .task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ProseMirror .task-item > label {
+  flex: 0 0 auto;
+  margin-top: 0.125rem;
+  user-select: none;
+}
+
+.ProseMirror .task-item > div {
+  flex: 1 1 auto;
+}
+
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding: 0;
+}
+
+.ProseMirror ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+}
+
+.ProseMirror ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-right: 0.5rem;
+  user-select: none;
+  margin-top: 0.125rem;
+}
+
+.ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+}
+
+/* Code Block Styles */
+.code-block {
+  position: relative;
+  margin: 1rem 0;
+}
+
+.code-block:hover button {
+  opacity: 1 !important;
+}
+
+.ProseMirror pre {
+  border-radius: 0.5rem;
+  font-family: 'JetBrainsMono', 'Courier New', Courier, monospace;
+  padding: 1rem;
+  margin: 0;
+  overflow-x: auto;
+}
+
+/* When there's a header, remove top border radius */
+.code-block > div + pre {
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.ProseMirror pre code {
+  font-size: 0.875rem;
+  display: block;
+  padding: 0;
+  line-height: 1.5;
+}
+
+/* Syntax Highlighting - Atom One Dark theme */
+.hljs {
+  color: #abb2bf;
+  background: #282c34;
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #5c6370;
+  font-style: italic;
+}
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-formula {
+  color: #c678dd;
+}
+
+.hljs-section,
+.hljs-name,
+.hljs-selector-tag,
+.hljs-deletion,
+.hljs-subst {
+  color: #e06c75;
+}
+
+.hljs-literal {
+  color: #56b6c2;
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: #98c379;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-type,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo,
+.hljs-number {
+  color: #d19a66;
+}
+
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-selector-id,
+.hljs-title {
+  color: #61aeee;
+}
+
+.hljs-built_in,
+.hljs-title.class_,
+.hljs-class .hljs-title {
+  color: #e6c07b;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: bold;
+}
+
+.hljs-link {
+  text-decoration: underline;
+}
+
+/* Mention (Kanban Annotation) Styles */
+.ProseMirror .mention {
+  background-color: hsl(var(--primary) / 0.1);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  color: hsl(var(--primary));
+  font-weight: 500;
+  text-decoration: none;
+  cursor: default;
+}
+
+.ProseMirror .mention:hover {
+  background-color: hsl(var(--primary) / 0.15);
+}

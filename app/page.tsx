@@ -4,14 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
 import { AppHeader } from "@/components/layout/AppHeader";
-import { ContentTabs } from "@/components/layout/ContentTabs";
-import { NoteEditorContainer } from "@/components/notes/NoteEditorContainer";
-import { KanbanBoard } from "@/components/kanban/KanbanBoard";
-import { NotesSidebar } from "@/components/notes/NotesSidebar";
-import { KanbanSyntaxHelp } from "@/components/kanban/KanbanSyntaxHelp";
-import { TabsContent } from "@/components/ui/tabs";
-import { PanelLeftOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { useNoteOperations } from "@/hooks/useNoteOperations";
 import { useKanbanBoards } from "@/hooks/useKanbanBoards";
 import { useAutoSave } from "@/hooks/useAutoSave";
@@ -101,74 +94,27 @@ export default function Home() {
       />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {!sidebarCollapsed && !isFullscreen && (
-          <NotesSidebar
-            currentNoteId={noteOps.currentNote?.path || null}
-            onSelectNote={handleSelectNote}
-            onNewNote={handleNewNote}
-            onArchiveNote={handleArchiveNote}
-            onDeleteNote={handleDeleteNote}
-            onCollapse={() => setSidebarCollapsed(true)}
-            refreshTrigger={refreshTrigger}
-          />
-        )}
-
-        {sidebarCollapsed && !isFullscreen && (
-          <div className="border-r bg-muted/30 flex flex-col items-center py-4 px-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarCollapsed(false)}
-              title="Show sidebar"
-              className="h-8 w-8 p-0"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
-        <main className="flex-1 overflow-hidden flex flex-col min-h-0">
-          <ContentTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            kanbanBoards={kanbanBoards}
-            isFullscreen={isFullscreen}
-            onFullscreenToggle={setIsFullscreen}
-            currentNoteTitle={noteOps.currentNote?.title}
-            hasCurrentNote={!!noteOps.currentNote}
-          >
-            <TabsContent value="notes" className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0">
-              <NoteEditorContainer
-                markdown={noteOps.markdown}
-                onChange={noteOps.setMarkdown}
-                hasNote={!!noteOps.currentNote}
-                kanbanBoards={kanbanBoards}
-              />
-            </TabsContent>
-
-            {kanbanBoards.map((board) => (
-              <TabsContent
-                key={board.id}
-                value={`kanban-${board.id}`}
-                className="m-0 p-6 data-[state=active]:flex data-[state=active]:flex-1 data-[state=active]:flex-col data-[state=active]:min-h-0"
-              >
-                <div className="flex-shrink-0 flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold">{board.name}</h2>
-                  <KanbanSyntaxHelp />
-                </div>
-                <div className="flex-1 min-h-0 h-0 overflow-y-auto">
-                  <KanbanBoard
-                    boardId={board.id}
-                    onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)}
-                    syncTrigger={boardSyncTrigger}
-                  />
-                </div>
-              </TabsContent>
-            ))}
-          </ContentTabs>
-        </main>
-      </div>
+      <MainLayout
+        sidebarCollapsed={sidebarCollapsed}
+        onSidebarCollapse={setSidebarCollapsed}
+        currentNoteId={noteOps.currentNote?.path || null}
+        onSelectNote={handleSelectNote}
+        onNewNote={handleNewNote}
+        onArchiveNote={handleArchiveNote}
+        onDeleteNote={handleDeleteNote}
+        refreshTrigger={refreshTrigger}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        isFullscreen={isFullscreen}
+        onFullscreenToggle={setIsFullscreen}
+        currentNoteTitle={noteOps.currentNote?.title}
+        hasCurrentNote={!!noteOps.currentNote}
+        markdown={noteOps.markdown}
+        onMarkdownChange={noteOps.setMarkdown}
+        kanbanBoards={kanbanBoards}
+        onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)}
+        boardSyncTrigger={boardSyncTrigger}
+      />
     </div>
   );
 }

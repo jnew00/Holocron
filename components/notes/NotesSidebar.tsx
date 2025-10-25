@@ -99,7 +99,6 @@ export function NotesSidebar({
             };
           });
 
-        console.log("Loaded notes with types:", loadedNotes.map(n => ({ title: n.title, type: n.type })));
         setNotes(loadedNotes);
       }
     } catch (error) {
@@ -231,12 +230,6 @@ export function NotesSidebar({
     sortBy === "time"
       ? groupNotesByTime(filteredNotes)
       : groupNotesByType(filteredNotes);
-
-  // Debug logging
-  if (sortBy === "type") {
-    console.log("Grouping by type. Filtered notes:", filteredNotes.map(n => ({ title: n.title, type: n.type })));
-    console.log("Grouped result:", Object.entries(groupedNotes).map(([cat, notes]) => ({ category: cat, count: notes.length })));
-  }
 
   const handleDeleteConfirm = () => {
     if (deleteConfirmNote) {

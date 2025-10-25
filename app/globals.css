@@ -95,7 +95,8 @@
 /* Tiptap Editor Styles */
 .editor-content-wrapper {
   /* Scale all editor content including headings, paragraphs, etc */
-  font-size: calc(100% * var(--font-size-editor-scale, 1));
+  /* Use 1rem as base (= root font size, typically 16px) */
+  font-size: calc(1rem * var(--font-size-editor-scale, 1));
 }
 
 .ProseMirror {

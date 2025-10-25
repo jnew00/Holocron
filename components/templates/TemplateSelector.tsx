@@ -43,7 +43,9 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function TemplateSelector({ onSelectTemplate }: TemplateSelectorProps) {
-  const { dirHandle, passphrase } = useRepo();
+  // TODO: This component needs to be updated to use repoPath instead of dirHandle
+  const { passphrase } = useRepo();
+  const dirHandle = null; // Temporarily disabled until refactored to use repoPath
   const [customTemplates, setCustomTemplates] = useState<NoteTemplate[]>([]);
   const defaultTemplates = getAllTemplates();
 

@@ -15,6 +15,9 @@ interface Settings {
   // Font size settings (percentage: 50-200)
   fontSizeGlobal: number;
   fontSizeEditor: number;
+  // Auto-sync settings
+  autoSyncEnabled: boolean;
+  autoSyncInterval: number; // in minutes
 }
 
 interface SettingsContextType {
@@ -32,6 +35,8 @@ const defaultSettings: Settings = {
   density: "comfortable",
   fontSizeGlobal: 100, // 100% = default size
   fontSizeEditor: 100, // 100% = default size
+  autoSyncEnabled: false,
+  autoSyncInterval: 30, // 30 minutes default
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);

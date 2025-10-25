@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { RepoProvider } from "@/contexts/RepoContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { AutoSyncManager } from "@/components/git/AutoSyncManager";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,7 +21,10 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <SettingsProvider>
-          <RepoProvider>{children}</RepoProvider>
+          <RepoProvider>
+            <AutoSyncManager />
+            {children}
+          </RepoProvider>
         </SettingsProvider>
       </body>
     </html>

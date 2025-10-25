@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Settings as SettingsIcon, FolderGit2, Check, Palette, Type, Monitor } from "lucide-react";
+import { Settings as SettingsIcon, FolderGit2, Check, Palette, Type, Monitor, Clock } from "lucide-react";
 
 export function SettingsDialog() {
   const { settings, updateSettings } = useSettings();
@@ -375,6 +375,60 @@ export function SettingsDialog() {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Auto-Sync Settings */}
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Auto-Sync
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="auto-sync-enabled">
+                    Enable Automatic Sync
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically commit and push changes on a schedule when the app is open
+                  </p>
+                </div>
+                <Switch
+                  id="auto-sync-enabled"
+                  checked={settings.autoSyncEnabled}
+                  onCheckedChange={(checked) =>
+                    updateSettings({ autoSyncEnabled: checked })
+                  }
+                />
+              </div>
+
+              {settings.autoSyncEnabled && (
+                <div className="space-y-2">
+                  <Label htmlFor="auto-sync-interval">Sync Interval</Label>
+                  <Select
+                    value={settings.autoSyncInterval.toString()}
+                    onValueChange={(value) =>
+                      updateSettings({ autoSyncInterval: parseInt(value) })
+                    }
+                  >
+                    <SelectTrigger id="auto-sync-interval">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">Every 5 minutes</SelectItem>
+                      <SelectItem value="10">Every 10 minutes</SelectItem>
+                      <SelectItem value="15">Every 15 minutes</SelectItem>
+                      <SelectItem value="30">Every 30 minutes</SelectItem>
+                      <SelectItem value="60">Every hour</SelectItem>
+                      <SelectItem value="120">Every 2 hours</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    How often to automatically sync your changes
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRepo } from "@/contexts/RepoContext";
+import { useSettings } from "@/contexts/SettingsContext";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +27,7 @@ import {
   ArrowDownCircle,
   Plus,
   Trash2,
+  Clock,
 } from "lucide-react";
 import {
   getStatus,
@@ -44,6 +46,7 @@ import {
 
 export function GitSync() {
   const { repoPath, passphrase } = useRepo();
+  const { settings } = useSettings();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<GitStatus | null>(null);
   const [branches, setBranches] = useState<GitBranch[]>([]);
@@ -164,6 +167,39 @@ export function GitSync() {
     try {
       await push(repoPath, remote);
       setSuccess("Changes pushed to remote");
+      await checkGitStatus();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    if (!repoPath || !commitMessage.trim()) return;
+
+    setWorking(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      // Step 1: Commit (which includes add and encrypt)
+      setSuccess("Encrypting and committing changes...");
+      await commit(repoPath, {
+        message: commitMessage,
+        author: {
+          name: authorName,
+          email: authorEmail,
+        },
+        passphrase: passphrase || undefined,
+      });
+
+      // Step 2: Push
+      setSuccess("Pushing to remote...");
+      await push(repoPath, remote);
+
+      setSuccess("All changes synced successfully!");
+      setCommitMessage("");
       await checkGitStatus();
     } catch (err: any) {
       setError(err.message);
@@ -370,6 +406,19 @@ export function GitSync() {
             </div>
           )}
 
+          {/* Auto-Sync Status */}
+          {settings.autoSyncEnabled && (
+            <div className="flex items-center gap-2 p-3 bg-blue-500/10 text-blue-700 dark:text-blue-400 rounded-lg border border-blue-500/20">
+              <Clock className="h-4 w-4" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Auto-Sync Enabled</p>
+                <p className="text-xs opacity-75">
+                  Syncing every {settings.autoSyncInterval} minute{settings.autoSyncInterval !== 1 ? 's' : ''}
+                </p>
+              </div>
+            </div>
+          )}
+
           {status && (
             <Tabs defaultValue="sync" className="w-full">
               <TabsList className="grid w-full grid-cols-2">
@@ -385,9 +434,14 @@ export function GitSync() {
                   </div>
                 )}
 
-                {/* Commit Section */}
-                <div className="space-y-2">
-                  <Label htmlFor="commit-message">Commit Message</Label>
+                {/* Main Sync All Section */}
+                <div className="space-y-2 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                  <Label htmlFor="commit-message" className="text-base font-semibold">
+                    Sync All Changes
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Add, encrypt, commit, and push all changes with one click
+                  </p>
                   <Textarea
                     id="commit-message"
                     value={commitMessage}
@@ -396,33 +450,53 @@ export function GitSync() {
                     className="min-h-[80px]"
                   />
                   <Button
-                    onClick={handleCommit}
+                    onClick={handleSyncAll}
                     disabled={working || !commitMessage.trim() || !status.hasChanges}
-                    className="w-full"
+                    className="w-full h-12 text-base"
+                    size="lg"
                   >
-                    <GitCommit className="h-4 w-4 mr-2" />
-                    {working ? "Committing..." : "Commit All Changes"}
+                    <ArrowUpCircle className="h-5 w-5 mr-2" />
+                    {working ? "Syncing..." : "Sync All"}
                   </Button>
                 </div>
 
-                {/* Push/Pull Section */}
-                <div className="space-y-2">
-                  <Label htmlFor="remote">Remote</Label>
-                  <Input
-                    id="remote"
-                    value={remote}
-                    onChange={(e) => setRemote(e.target.value)}
-                    placeholder="origin"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button onClick={handlePull} disabled={working} variant="outline">
-                      <Download className="h-4 w-4 mr-2" />
-                      Pull
+                {/* Individual Steps Section */}
+                <div className="pt-2">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">Individual Steps</p>
+
+                  {/* Commit Section */}
+                  <div className="space-y-2 mb-4">
+                    <Label htmlFor="commit-only" className="text-sm">Commit Only</Label>
+                    <Button
+                      onClick={handleCommit}
+                      disabled={working || !commitMessage.trim() || !status.hasChanges}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      <GitCommit className="h-4 w-4 mr-2" />
+                      {working ? "Committing..." : "Commit Changes"}
                     </Button>
-                    <Button onClick={handlePush} disabled={working} variant="outline">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Push
-                    </Button>
+                  </div>
+
+                  {/* Push/Pull Section */}
+                  <div className="space-y-2">
+                    <Label htmlFor="remote" className="text-sm">Push/Pull</Label>
+                    <Input
+                      id="remote"
+                      value={remote}
+                      onChange={(e) => setRemote(e.target.value)}
+                      placeholder="origin"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button onClick={handlePull} disabled={working} variant="outline">
+                        <Download className="h-4 w-4 mr-2" />
+                        Pull
+                      </Button>
+                      <Button onClick={handlePush} disabled={working} variant="outline">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Push
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </TabsContent>

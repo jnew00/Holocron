@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useRepo } from "@/contexts/RepoContext";
+import { useUnlock } from "@/hooks/useUnlock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,41 +17,14 @@ import { Lock, Loader2 } from "lucide-react";
 
 export function LockedScreen() {
   const { repoPath, setRepo } = useRepo();
-  const [passphrase, setPassphrase] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const handleUnlock = async () => {
-    if (!repoPath) {
-      setError("No repository found");
-      return;
-    }
-
-    setError("");
-    setLoading(true);
-
-    try {
-      // For now, just validate passphrase length
-      // Real validation will happen when trying to decrypt files
-      if (!passphrase || passphrase.length < 8) {
-        setError("Invalid passphrase");
-        setLoading(false);
-        return;
-      }
-
-      setRepo(repoPath, passphrase);
-    } catch (err) {
-      setError("Failed to unlock: " + (err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleUnlock();
-    }
-  };
+  const {
+    passphrase,
+    setPassphrase,
+    error,
+    loading,
+    handleUnlock,
+    handleKeyDown,
+  } = useUnlock({ repoPath, setRepo });
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">

@@ -41,9 +41,10 @@ import { Separator } from "@/components/ui/separator";
 interface KanbanBoardProps {
   boardId: string;
   onBoardUpdate?: () => void;
+  syncTrigger?: number;
 }
 
-export function KanbanBoard({ boardId, onBoardUpdate }: KanbanBoardProps) {
+export function KanbanBoard({ boardId, onBoardUpdate, syncTrigger }: KanbanBoardProps) {
   const { repoPath } = useRepo();
   const [board, setBoard] = useState<KanbanBoardType>(createDefaultBoard());
   const [activeCard, setActiveCard] = useState<KanbanCardType | null>(null);
@@ -54,6 +55,7 @@ export function KanbanBoard({ boardId, onBoardUpdate }: KanbanBoardProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingColumns, setEditingColumns] = useState(board.columns);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false); // Track if board has been loaded from disk
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -372,14 +374,22 @@ ${doneColumn.cards.map((card) => {
         const data = await response.json();
         const loadedBoard = JSON.parse(data.content);
         setBoard(loadedBoard);
+        setIsLoaded(true); // Mark as loaded
+      } else if (response.status === 404) {
+        // Only create default board if file doesn't exist (404)
+        console.log("Board not found, creating default board");
+        const defaultBoard = createDefaultBoard();
+        defaultBoard.id = boardId;
+        setBoard(defaultBoard);
+        setIsLoaded(true); // Mark as loaded
+        await saveBoard(defaultBoard);
+      } else {
+        // For other errors (permissions, etc), don't overwrite - just log
+        console.error("Failed to load board, status:", response.status);
       }
     } catch (error) {
-      console.error("Failed to load board:", error);
-      // Create default board if doesn't exist
-      const defaultBoard = createDefaultBoard();
-      defaultBoard.id = boardId;
-      setBoard(defaultBoard);
-      await saveBoard(defaultBoard);
+      // For parse errors or network errors, don't overwrite the board
+      console.error("Error loading board:", error);
     }
   };
 
@@ -408,7 +418,7 @@ ${doneColumn.cards.map((card) => {
   };
 
   const handleSyncFromNotes = async () => {
-    if (!repoPath) return;
+    if (!repoPath || !isLoaded) return; // Don't sync until board is loaded!
 
     setIsSyncing(true);
     try {
@@ -476,6 +486,13 @@ ${doneColumn.cards.map((card) => {
     }
   }, [repoPath, boardId]);
 
+  // Sync from notes when syncTrigger changes OR when board finishes loading
+  useEffect(() => {
+    if (repoPath && boardId && syncTrigger && syncTrigger > 0 && isLoaded) {
+      handleSyncFromNotes();
+    }
+  }, [syncTrigger, isLoaded]); // Now also triggers when isLoaded changes
+
   // NOTE: Auto-sync disabled to prevent cards from disappearing
   // Users can manually sync using the "Sync from Notes" button
   // useEffect(() => {
@@ -487,16 +504,16 @@ ${doneColumn.cards.map((card) => {
   //   }
   // }, [repoPath, boardId]);
 
-  // Auto-save board when it changes
+  // Auto-save board when it changes (but only after initial load)
   useEffect(() => {
-    if (repoPath && board.id) {
+    if (repoPath && board.id && isLoaded) {
       const timeoutId = setTimeout(() => {
         saveBoard();
       }, 1000);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [board, repoPath]);
+  }, [board, repoPath, isLoaded]);
 
   return (
     <div className="w-full">

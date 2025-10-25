@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { useRepo } from "@/contexts/RepoContext";
 import { SetupWizard } from "@/components/setup/SetupWizard";
@@ -52,6 +52,29 @@ export default function Home() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [kanbanBoards, setKanbanBoards] = useState<KanbanBoardType[]>([]);
   const [activeTab, setActiveTab] = useState("notes");
+  const [boardSyncTrigger, setBoardSyncTrigger] = useState(0); // Separate trigger for board sync
+
+  // Use ref to track current note for auto-save without triggering re-renders
+  const currentNoteRef = useRef<Note | null>(null);
+
+  // Keep ref in sync with currentNote
+  useEffect(() => {
+    currentNoteRef.current = currentNote;
+  }, [currentNote]);
+
+  // Track previous tab to know when we switch TO kanban
+  const previousTabRef = useRef<string>("notes");
+  const previousTitleRef = useRef<string>("");
+
+  // Auto-sync kanban board when switching to a board tab
+  useEffect(() => {
+    if (activeTab.startsWith("kanban-") && previousTabRef.current !== activeTab) {
+      // Switched TO a kanban board - trigger sync
+      setBoardSyncTrigger((prev) => prev + 1);
+    }
+    // Update previous tab for next comparison
+    previousTabRef.current = activeTab;
+  }, [activeTab]);
 
   // Helper function to generate note path
   const generateNotePath = (title: string, createdAt: string): string => {
@@ -119,18 +142,19 @@ export default function Home() {
 
   // Auto-save every 2 seconds when content changes
   useEffect(() => {
-    if (!currentNote || !repoPath) return;
+    const note = currentNoteRef.current;
+    if (!note || !repoPath) return;
 
     const timeoutId = setTimeout(async () => {
       // Extract content from currentNote (without frontmatter) to compare
-      const { content: currentContentWithoutFrontmatter } = extractFrontmatter(currentNote.content);
+      const { content: currentContentWithoutFrontmatter } = extractFrontmatter(note.content);
       if (markdown.trim() !== currentContentWithoutFrontmatter.trim()) {
         await handleSave();
       }
     }, 2000);
 
     return () => clearTimeout(timeoutId);
-  }, [markdown, currentNote, repoPath]);
+  }, [markdown, repoPath]);
 
   const handleNewNote = async () => {
     if (!repoPath) return;
@@ -166,6 +190,7 @@ export default function Home() {
         setCurrentNote(newNote);
         setMarkdown(baseContent); // Only show content, not frontmatter
         setNoteFrontmatter(frontmatter); // Store frontmatter separately
+        previousTitleRef.current = newNote.title; // Initialize title tracking
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -207,6 +232,7 @@ export default function Home() {
         setCurrentNote(newNote);
         setMarkdown(template.content); // Only show content, not frontmatter
         setNoteFrontmatter(frontmatter); // Store frontmatter separately
+        previousTitleRef.current = newNote.title; // Initialize title tracking
         setRefreshTrigger((prev) => prev + 1);
       }
     } catch (error) {
@@ -244,6 +270,8 @@ export default function Home() {
         setMarkdown(markdownContent); // Only show content, not frontmatter
         setNoteFrontmatter(frontmatter); // Store frontmatter separately
         setActiveTab("notes"); // Switch to notes tab
+        // Initialize title tracking
+        previousTitleRef.current = note.title;
       }
     } catch (error) {
       console.error("Failed to load note:", error);
@@ -251,7 +279,8 @@ export default function Home() {
   };
 
   const handleSave = async () => {
-    if (!currentNote || !repoPath || !currentNote.path) return;
+    const note = currentNoteRef.current;
+    if (!note || !repoPath || !note.path) return;
 
     setIsSaving(true);
     try {
@@ -259,15 +288,19 @@ export default function Home() {
       const titleMatch = markdown.match(/^#\s+(.+)$/m);
       const title = titleMatch ? titleMatch[1] : "Untitled";
 
+      // Check if title has changed
+      const titleChanged = previousTitleRef.current && previousTitleRef.current !== title;
+      previousTitleRef.current = title;
+
       // Merge frontmatter with markdown content for saving
       const mergedFrontmatter = {
         ...noteFrontmatter,
-        type: currentNote.type || noteFrontmatter.type || "note",
+        type: note.type || noteFrontmatter.type || "note",
       };
       const contentToSave = addFrontmatter(markdown, mergedFrontmatter);
 
       const updatedNote: Note = {
-        ...currentNote,
+        ...note,
         title,
         content: contentToSave,
         updatedAt: new Date().toISOString(),
@@ -278,15 +311,23 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           repoPath,
-          notePath: currentNote.path,
+          notePath: note.path,
           content: contentToSave,
         }),
       });
 
       if (response.ok) {
-        setCurrentNote(updatedNote);
+        // Update ref directly to avoid re-render, but keep content in sync
+        currentNoteRef.current = updatedNote;
         setLastSaved(new Date());
-        setRefreshTrigger((prev) => prev + 1);
+
+        // Update currentNote state to refresh the header display
+        setCurrentNote(updatedNote);
+
+        // Only refresh sidebar if title changed (to update the list)
+        if (titleChanged) {
+          setRefreshTrigger((prev) => prev + 1);
+        }
       }
     } catch (error) {
       console.error("Failed to save note:", error);
@@ -527,7 +568,11 @@ export default function Home() {
                   <KanbanSyntaxHelp />
                 </div>
                 <div className="flex-1 min-h-0 h-0 overflow-y-auto">
-                  <KanbanBoard boardId={board.id} onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)} />
+                  <KanbanBoard
+                    boardId={board.id}
+                    onBoardUpdate={() => setRefreshTrigger(prev => prev + 1)}
+                    syncTrigger={boardSyncTrigger}
+                  />
                 </div>
               </TabsContent>
             ))}

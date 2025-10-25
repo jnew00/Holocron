@@ -61,15 +61,15 @@ export function extractKanbanTasks(
     if (boardOrKanban?.toLowerCase() === "kanban") {
       // @kanban or @kanban:column → use default board
       boardId = undefined; // Will use default board
-      columnName = column1 || column2 || "Backlog";
+      columnName = column1 || column2 || ""; // Empty string = use first column
     } else if (boardOrKanban) {
       // @board-id or @board-id:column → specific board
       boardId = boardOrKanban;
-      columnName = column1 || "Backlog";
+      columnName = column1 || ""; // Empty string = use first column
     } else {
       // #kanban or #kanban:column → use default board
       boardId = undefined;
-      columnName = column2 || "Backlog";
+      columnName = column2 || ""; // Empty string = use first column
     }
 
     // First, strip HTML tags (mentions are wrapped in HTML)
@@ -93,10 +93,25 @@ export function extractKanbanTasks(
 }
 
 /**
- * Capitalize column name (e.g., "doing" -> "Doing")
+ * Capitalize column name, preserving multi-word formats
+ * Examples:
+ *   "" -> "" (empty means use first column)
+ *   "doing" -> "Doing"
+ *   "to do" -> "To Do"
+ *   "to-do" -> "To-Do"
+ *   "in progress" -> "In Progress"
  */
 function capitalizeColumn(column: string): string {
-  return column.charAt(0).toUpperCase() + column.slice(1).toLowerCase();
+  if (!column) return ""; // Empty string means use first column
+
+  // Split by spaces or hyphens, capitalize each word, then rejoin
+  return column
+    .split(/(\s|-)/g) // Split on spaces or hyphens, but keep the separators
+    .map(part => {
+      if (part === ' ' || part === '-') return part; // Keep separators as-is
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join('');
 }
 
 /**
@@ -163,10 +178,16 @@ export function syncTasksToBoard(
     return task.boardId === targetBoardId;
   });
 
-  // Get all existing cards from all columns
+  // Get all existing cards from all columns and track their current column
   const allExistingCards: KanbanCard[] = [];
+  const cardToColumnMap = new Map<string, string>(); // card ID -> column ID
   currentColumns.forEach((col) => {
-    allExistingCards.push(...col.cards);
+    col.cards.forEach(card => {
+      if (card.tags?.includes(`note:${noteId}`)) {
+        allExistingCards.push(card);
+        cardToColumnMap.set(card.id, col.id);
+      }
+    });
   });
 
   // Convert extracted tasks to kanban cards
@@ -189,23 +210,32 @@ export function syncTasksToBoard(
   newCards.forEach((card) => {
     const extracted = extractedTasks.find((et) => et.content === card.title);
 
-    // Determine target column based on completion status and annotation
-    let targetColumnName: string;
+    let targetColumn: KanbanColumn | undefined;
+
+    // Check if this card already existed on the board
+    const existingColumnId = cardToColumnMap.get(card.id);
+
     if (extracted?.completed) {
-      // Completed tasks go to Done column
-      targetColumnName = "Done";
+      // COMPLETED TASKS: Always move to Done (last column), even if they existed before
+      targetColumn = updatedColumns[updatedColumns.length - 1];
+    } else if (existingColumnId) {
+      // EXISTING CARD (not completed): Keep it in its current column (don't move it)
+      targetColumn = updatedColumns.find(col => col.id === existingColumnId);
     } else {
-      // Use the specified column or default to first column
-      targetColumnName = extracted?.column || "To Do";
+      // NEW CARD (not completed): Place based on annotation or defaults
+      if (extracted?.column && extracted.column !== "") {
+        // If column is specified, try to find it by title (case-insensitive, ignoring hyphens vs spaces)
+        const normalizedSearch = extracted.column.toLowerCase().replace(/[-\s]/g, '');
+        targetColumn = updatedColumns.find(
+          (col) => col.title.toLowerCase().replace(/[-\s]/g, '') === normalizedSearch
+        );
+      }
+
+      // Default: use first column if no match found or if column was empty
+      if (!targetColumn) {
+        targetColumn = updatedColumns[0];
+      }
     }
-
-    // Find column by title (case-insensitive)
-    const column = updatedColumns.find(
-      (col) => col.title.toLowerCase() === targetColumnName.toLowerCase()
-    );
-
-    // Fallback to first column if target not found
-    const targetColumn = column || updatedColumns[0];
 
     if (targetColumn) {
       targetColumn.cards.push(card);

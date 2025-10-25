@@ -142,12 +142,14 @@ export function TiptapEditor({
     },
   }, [kanbanBoards]); // Recreate editor when kanban boards change
 
-  // Update editor content when prop changes
+  // Update editor content when prop changes (but not while user is typing)
   useEffect(() => {
     if (editor && content !== undefined) {
       const storage = editor.storage as any;
       const currentMarkdown = storage.markdown?.getMarkdown?.() || "";
-      if (currentMarkdown.trim() !== content.trim()) {
+
+      // Don't update if content is the same or if editor is focused (user is typing)
+      if (currentMarkdown.trim() !== content.trim() && !editor.isFocused) {
         editor.commands.setContent(content);
       }
     }

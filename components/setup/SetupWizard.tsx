@@ -58,7 +58,22 @@ export function SetupWizard() {
       setIsExistingRepo(checkData.isValid);
 
       if (checkData.isValid) {
-        setStep("unlock");
+        // Check if config has a passphrase
+        const configResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(path)}`);
+        if (configResponse.ok) {
+          const { config } = await configResponse.json();
+          if (config && config.passphrase) {
+            // Has passphrase, need to unlock
+            setStep("unlock");
+          } else {
+            // Config exists but no passphrase, treat as new repo
+            console.log("[SetupWizard] Config exists but no passphrase, creating new");
+            setStep("create-passphrase");
+          }
+        } else {
+          // Config doesn't exist or can't be read, create new
+          setStep("create-passphrase");
+        }
       } else {
         setStep("create-passphrase");
       }

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRepo } from "@/contexts/RepoContext";
 import { useKanbanData } from "@/hooks/useKanbanData";
 import { useKanbanDragDrop } from "@/hooks/useKanbanDragDrop";
@@ -70,6 +70,11 @@ export function KanbanBoard({ boardId, onBoardUpdate, syncTrigger }: KanbanBoard
     handleSaveColumns,
   } = useKanbanColumns({ board, setBoard });
 
+  // Memoized callback to open add card dialog
+  const handleOpenAddCard = useCallback(() => {
+    setIsAddCardDialogOpen(true);
+  }, []);
+
   // Show loading state
   if (!isLoaded) {
     return (
@@ -101,7 +106,7 @@ export function KanbanBoard({ boardId, onBoardUpdate, syncTrigger }: KanbanBoard
         onUpdateCard={handleUpdateCard}
         onArchiveDoneColumn={handleArchiveDoneColumn}
         onOpenSettings={handleOpenSettings}
-        onOpenAddCard={() => setIsAddCardDialogOpen(true)}
+        onOpenAddCard={handleOpenAddCard}
         onSync={syncTasksToBoard}
         isSyncing={isSyncing || isArchiving}
       />

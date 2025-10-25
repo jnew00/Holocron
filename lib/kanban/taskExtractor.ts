@@ -178,10 +178,16 @@ export function syncTasksToBoard(
     return task.boardId === targetBoardId;
   });
 
-  // Get all existing cards from all columns
+  // Get all existing cards from all columns and track their current column
   const allExistingCards: KanbanCard[] = [];
+  const cardToColumnMap = new Map<string, string>(); // card ID -> column ID
   currentColumns.forEach((col) => {
-    allExistingCards.push(...col.cards);
+    col.cards.forEach(card => {
+      if (card.tags?.includes(`note:${noteId}`)) {
+        allExistingCards.push(card);
+        cardToColumnMap.set(card.id, col.id);
+      }
+    });
   });
 
   // Convert extracted tasks to kanban cards
@@ -206,20 +212,28 @@ export function syncTasksToBoard(
 
     let targetColumn: KanbanColumn | undefined;
 
-    if (extracted?.completed) {
-      // Completed tasks go to last column (typically "Done")
-      targetColumn = updatedColumns[updatedColumns.length - 1];
-    } else if (extracted?.column && extracted.column !== "") {
-      // If column is specified, try to find it by title (case-insensitive, ignoring hyphens vs spaces)
-      const normalizedSearch = extracted.column.toLowerCase().replace(/[-\s]/g, '');
-      targetColumn = updatedColumns.find(
-        (col) => col.title.toLowerCase().replace(/[-\s]/g, '') === normalizedSearch
-      );
-    }
+    // Check if this card already existed on the board
+    const existingColumnId = cardToColumnMap.get(card.id);
+    if (existingColumnId) {
+      // EXISTING CARD: Keep it in its current column (don't move it)
+      targetColumn = updatedColumns.find(col => col.id === existingColumnId);
+    } else {
+      // NEW CARD: Place based on annotation or defaults
+      if (extracted?.completed) {
+        // Completed tasks go to last column (typically "Done")
+        targetColumn = updatedColumns[updatedColumns.length - 1];
+      } else if (extracted?.column && extracted.column !== "") {
+        // If column is specified, try to find it by title (case-insensitive, ignoring hyphens vs spaces)
+        const normalizedSearch = extracted.column.toLowerCase().replace(/[-\s]/g, '');
+        targetColumn = updatedColumns.find(
+          (col) => col.title.toLowerCase().replace(/[-\s]/g, '') === normalizedSearch
+        );
+      }
 
-    // Default: use first column if no match found or if column was empty
-    if (!targetColumn) {
-      targetColumn = updatedColumns[0];
+      // Default: use first column if no match found or if column was empty
+      if (!targetColumn) {
+        targetColumn = updatedColumns[0];
+      }
     }
 
     if (targetColumn) {

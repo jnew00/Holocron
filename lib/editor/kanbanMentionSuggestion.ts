@@ -1,10 +1,10 @@
 import { ReactRenderer } from "@tiptap/react";
 import tippy, { Instance as TippyInstance } from "tippy.js";
+import { KanbanMentionList } from "@/components/editor/KanbanMentionList";
 import {
-  KanbanMentionList,
   KanbanMentionItem,
   generateKanbanSuggestions,
-} from "@/components/editor/KanbanMentionList";
+} from "@/lib/editor/kanbanSuggestions";
 import { KanbanBoard } from "@/lib/kanban/types";
 
 export function createKanbanMentionSuggestion(boards: KanbanBoard[]) {

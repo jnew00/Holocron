@@ -59,6 +59,8 @@ export function GitSync() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [conflictedFiles, setConflictedFiles] = useState<string[]>([]);
+  const [nextSyncTime, setNextSyncTime] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
   const loadGitConfig = async () => {
     if (!repoPath) return;
@@ -300,6 +302,99 @@ export function GitSync() {
     }
   };
 
+  // Calculate next sync time
+  useEffect(() => {
+    const calculateNextSync = () => {
+      const now = new Date();
+      setCurrentTime(now);
+
+      let nextIntervalSync: Date | null = null;
+      let nextScheduledSync: Date | null = null;
+
+      // Calculate next interval sync
+      if (settings.autoSyncEnabled) {
+        nextIntervalSync = new Date(now.getTime() + settings.autoSyncInterval * 60 * 1000);
+      }
+
+      // Calculate next scheduled sync
+      if (settings.autoSyncScheduleEnabled && settings.autoSyncScheduleDays.length > 0) {
+        const [hours, minutes] = settings.autoSyncScheduleTime.split(":").map(Number);
+
+        // Start with today
+        let candidate = new Date();
+        candidate.setHours(hours, minutes, 0, 0);
+
+        // If today's time has passed, start from tomorrow
+        if (candidate <= now) {
+          candidate.setDate(candidate.getDate() + 1);
+        }
+
+        // Find next valid day
+        let attempts = 0;
+        while (!settings.autoSyncScheduleDays.includes(candidate.getDay()) && attempts < 7) {
+          candidate.setDate(candidate.getDate() + 1);
+          attempts++;
+        }
+
+        if (attempts < 7) {
+          nextScheduledSync = candidate;
+        }
+      }
+
+      // Determine which sync comes first
+      let nextSync: Date | null = null;
+      let syncType = "";
+
+      if (nextIntervalSync && nextScheduledSync) {
+        if (nextIntervalSync < nextScheduledSync) {
+          nextSync = nextIntervalSync;
+          syncType = "interval";
+        } else {
+          nextSync = nextScheduledSync;
+          syncType = "scheduled";
+        }
+      } else if (nextIntervalSync) {
+        nextSync = nextIntervalSync;
+        syncType = "interval";
+      } else if (nextScheduledSync) {
+        nextSync = nextScheduledSync;
+        syncType = "scheduled";
+      }
+
+      if (nextSync) {
+        const timeUntil = nextSync.getTime() - now.getTime();
+        const minutesUntil = Math.floor(timeUntil / 60000);
+        const hoursUntil = Math.floor(minutesUntil / 60);
+        const daysUntil = Math.floor(hoursUntil / 24);
+
+        let timeStr = "";
+        if (daysUntil > 0) {
+          timeStr = `in ${daysUntil} day${daysUntil > 1 ? "s" : ""}`;
+        } else if (hoursUntil > 0) {
+          const remainingMinutes = minutesUntil % 60;
+          timeStr = `in ${hoursUntil}h ${remainingMinutes}m`;
+        } else if (minutesUntil > 0) {
+          timeStr = `in ${minutesUntil} minute${minutesUntil > 1 ? "s" : ""}`;
+        } else {
+          timeStr = "soon";
+        }
+
+        const dateStr = nextSync.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        setNextSyncTime(`${timeStr} (${dateStr})`);
+      } else {
+        setNextSyncTime("");
+      }
+    };
+
+    if (open && (settings.autoSyncEnabled || settings.autoSyncScheduleEnabled)) {
+      calculateNextSync();
+      const interval = setInterval(calculateNextSync, 30000); // Update every 30 seconds
+      return () => clearInterval(interval);
+    } else {
+      setNextSyncTime("");
+    }
+  }, [open, settings.autoSyncEnabled, settings.autoSyncInterval, settings.autoSyncScheduleEnabled, settings.autoSyncScheduleTime, settings.autoSyncScheduleDays]);
+
   // Poll git status every 30 seconds when not in dialog
   useEffect(() => {
     if (!open && repoPath) {
@@ -426,6 +521,11 @@ export function GitSync() {
                         : settings.autoSyncScheduleDays
                             .map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d])
                             .join(", ")}
+                    </p>
+                  )}
+                  {nextSyncTime && (
+                    <p className="font-medium text-blue-800 dark:text-blue-300 mt-1">
+                      Next sync: {nextSyncTime}
                     </p>
                   )}
                 </div>

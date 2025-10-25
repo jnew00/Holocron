@@ -140,18 +140,20 @@ export function useKanbanData({
     if (repoPath && boardId && syncTrigger && syncTrigger > 0 && isLoaded) {
       syncTasksToBoard();
     }
-  }, [syncTrigger, isLoaded, repoPath, boardId, syncTasksToBoard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncTrigger, isLoaded]);
 
   // Auto-save board when it changes (but only after initial load)
   useEffect(() => {
-    if (repoPath && board.id && isLoaded) {
+    if (repoPath && board.id && isLoaded && !isSyncing) {
       const timeoutId = setTimeout(() => {
         saveBoard();
       }, 1000);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [board, repoPath, isLoaded, saveBoard]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board, repoPath, isLoaded, isSyncing]);
 
   return {
     board,

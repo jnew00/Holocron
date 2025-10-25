@@ -314,6 +314,7 @@
 }
 
 .ProseMirror pre {
+  background: #282c34;
   border-radius: 0.5rem;
   font-family: 'JetBrainsMono', 'Courier New', Courier, monospace;
   padding: 1rem;
@@ -327,6 +328,8 @@
 }
 
 .ProseMirror pre code {
+  background: transparent;
+  color: #abb2bf;
   font-size: 0.875rem;
   display: block;
   padding: 0;

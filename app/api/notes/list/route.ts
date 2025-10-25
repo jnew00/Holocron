@@ -33,14 +33,25 @@ export async function GET(request: NextRequest) {
             const stats = await fs.stat(fullPath);
             const relativePath = path.relative(baseDir, fullPath);
 
-            // Parse frontmatter to extract type
+            // Parse frontmatter and extract title from content
             let noteType = "note";
+            let title = entry.name.replace(".md", "")
+              .split("-")
+              .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+              .join(" ");
+
             try {
               const content = await fs.readFile(fullPath, "utf-8");
-              const { data } = matter(content);
+              const { data, content: markdownContent } = matter(content);
               noteType = data.type || "note";
+
+              // Extract title from first H1 in content
+              const titleMatch = markdownContent.match(/^#\s+(.+)$/m);
+              if (titleMatch) {
+                title = titleMatch[1];
+              }
             } catch (error) {
-              // If parsing fails, default to "note"
+              // If parsing fails, default to "note" and filename-based title
               console.warn(`Failed to parse frontmatter for ${fullPath}:`, error);
             }
 
@@ -51,6 +62,7 @@ export async function GET(request: NextRequest) {
               modified: stats.mtime.toISOString(),
               size: stats.size,
               type: noteType,
+              title,
             });
           }
         }

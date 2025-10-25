@@ -82,9 +82,8 @@ export function NotesSidebar({
             return showArchived ? isArchived : !isArchived;
           })
           .map((note: any) => {
-            // Extract title from filename
-            const fileName = note.name.replace(".md", "");
-            const title = fileName
+            // Use title from API (extracted from H1) or fallback to filename
+            const title = note.title || note.name.replace(".md", "")
               .split("-")
               .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
               .join(" ");

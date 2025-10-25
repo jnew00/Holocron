@@ -93,10 +93,22 @@ export function extractKanbanTasks(
 }
 
 /**
- * Capitalize column name (e.g., "doing" -> "Doing")
+ * Capitalize column name, preserving multi-word formats
+ * Examples:
+ *   "doing" -> "Doing"
+ *   "to do" -> "To Do"
+ *   "to-do" -> "To-Do"
+ *   "in progress" -> "In Progress"
  */
 function capitalizeColumn(column: string): string {
-  return column.charAt(0).toUpperCase() + column.slice(1).toLowerCase();
+  // Split by spaces or hyphens, capitalize each word, then rejoin
+  return column
+    .split(/(\s|-)/g) // Split on spaces or hyphens, but keep the separators
+    .map(part => {
+      if (part === ' ' || part === '-') return part; // Keep separators as-is
+      return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+    })
+    .join('');
 }
 
 /**

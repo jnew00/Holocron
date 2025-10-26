@@ -3,20 +3,20 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { encrypt } from "@/lib/crypto/unified";
+import { encryptWithDEK, base64Decode } from "@/lib/crypto/unified";
 
 const execAsync = promisify(exec);
 
-// Encrypt a file using unified crypto (AES-256-GCM with AAD binding)
-async function encryptFile(filePath: string, passphrase: string, repoPath: string): Promise<void> {
+// Encrypt a file using DEK (NEW - much faster than PBKDF2!)
+async function encryptFile(filePath: string, dek: Uint8Array, repoPath: string): Promise<void> {
   const plaintext = await fs.readFile(filePath, "utf-8");
 
   // Calculate relative path for AAD (binds ciphertext to file location)
   const relativePath = path.relative(repoPath, filePath);
   const aad = relativePath.replace(/\\/g, '/'); // Normalize path separators
 
-  // Encrypt with AAD binding
-  const encrypted = await encrypt(plaintext, passphrase, aad);
+  // Encrypt with DEK and AAD binding (keeps your security feature!)
+  const encrypted = await encryptWithDEK(plaintext, dek, aad);
 
   // Write encrypted file
   await fs.writeFile(filePath + ".enc", encrypted);
@@ -24,7 +24,7 @@ async function encryptFile(filePath: string, passphrase: string, repoPath: strin
 
 export async function POST(request: NextRequest) {
   try {
-    const { repoPath, message, author, passphrase } = await request.json();
+    const { repoPath, message, author, dekBase64 } = await request.json();
 
     if (!repoPath || !message) {
       return NextResponse.json(
@@ -33,8 +33,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // If passphrase provided, encrypt all .md files before committing
-    if (passphrase) {
+    // If DEK provided, encrypt all .md files before committing
+    if (dekBase64) {
+      const dek = base64Decode(dekBase64);
       const notesPath = path.join(repoPath, "notes");
 
       // Recursively find all .md files
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
             if (entry.isDirectory()) {
               await encryptMarkdownFiles(fullPath);
             } else if (entry.isFile() && entry.name.endsWith(".md")) {
-              await encryptFile(fullPath, passphrase, repoPath);
+              await encryptFile(fullPath, dek, repoPath);
             }
           }
         } catch (error) {

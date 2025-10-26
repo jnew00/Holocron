@@ -3,12 +3,12 @@ import { exec } from "child_process";
 import { promisify } from "util";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { decrypt } from "@/lib/crypto/unified";
+import { decryptWithDEK, base64Decode } from "@/lib/crypto/unified";
 
 const execAsync = promisify(exec);
 
-// Decrypt a file using unified crypto (AES-256-GCM with AAD verification)
-async function decryptFile(encFilePath: string, passphrase: string, repoPath: string): Promise<void> {
+// Decrypt a file using DEK (NEW - much faster than PBKDF2!)
+async function decryptFile(encFilePath: string, dek: Uint8Array, repoPath: string): Promise<void> {
   const encryptedData = await fs.readFile(encFilePath);
 
   // Calculate relative path for AAD (must match encryption AAD)
@@ -16,8 +16,8 @@ async function decryptFile(encFilePath: string, passphrase: string, repoPath: st
   const relativePath = path.relative(repoPath, outputPath);
   const aad = relativePath.replace(/\\/g, '/'); // Normalize path separators
 
-  // Decrypt with AAD verification
-  const decrypted = await decrypt(new Uint8Array(encryptedData), passphrase, aad);
+  // Decrypt with DEK and AAD verification (keeps your security feature!)
+  const decrypted = await decryptWithDEK(new Uint8Array(encryptedData), dek, aad);
 
   // Write decrypted file
   await fs.writeFile(outputPath, Buffer.from(decrypted), "utf-8");
@@ -25,7 +25,7 @@ async function decryptFile(encFilePath: string, passphrase: string, repoPath: st
 
 export async function POST(request: NextRequest) {
   try {
-    const { repoPath, remote = "origin", branch, passphrase } = await request.json();
+    const { repoPath, remote = "origin", branch, dekBase64 } = await request.json();
 
     if (!repoPath) {
       return NextResponse.json(
@@ -68,8 +68,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // If passphrase provided, decrypt all pulled .md.enc files
-    if (passphrase) {
+    // If DEK provided, decrypt all pulled .md.enc files
+    if (dekBase64) {
+      const dek = base64Decode(dekBase64);
       const notesPath = path.join(repoPath, "notes");
 
       // Recursively find and decrypt all .md.enc files
@@ -84,7 +85,7 @@ export async function POST(request: NextRequest) {
               await decryptMarkdownFiles(fullPath);
             } else if (entry.isFile() && entry.name.endsWith(".md.enc")) {
               try {
-                await decryptFile(fullPath, passphrase, repoPath);
+                await decryptFile(fullPath, dek, repoPath);
               } catch (error) {
                 console.error(`Failed to decrypt ${fullPath}:`, error);
               }

@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { encryptConfig } from "@/lib/crypto/unified";
-import { validateConfig, safeParseConfig } from "@/lib/schema/config";
+import { safeParseConfig } from "@/lib/schema/config";
 
+/**
+ * Write config to .holocron/config.json
+ *
+ * NEW: Config is now stored in PLAINTEXT (not encrypted)
+ * No passphrase needed - just write JSON directly!
+ */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { repoPath, config, passphrase } = body;
+    const { repoPath, config } = body;
 
-    if (!repoPath || !config || !passphrase) {
+    if (!repoPath || !config) {
       return NextResponse.json(
-        { error: "Repository path, config, and passphrase are required" },
+        { error: "Repository path and config are required" },
         { status: 400 }
       );
     }
@@ -27,17 +32,14 @@ export async function POST(request: NextRequest) {
     }
 
     const configDir = path.join(repoPath, ".holocron");
-    const configPath = path.join(configDir, "config.json.enc");
+    const configPath = path.join(configDir, "config.json");
 
     // Ensure directory exists
     await fs.mkdir(configDir, { recursive: true });
 
-    // Encrypt validated config using unified crypto (fixed salt for cross-device compatibility)
+    // Write plaintext config (much simpler!)
     const configJson = JSON.stringify(validationResult.data, null, 2);
-    const encryptedData = await encryptConfig(configJson, passphrase);
-
-    // Write encrypted config
-    await fs.writeFile(configPath, encryptedData, "utf-8");
+    await fs.writeFile(configPath, configJson, "utf-8");
 
     return NextResponse.json({
       success: true,

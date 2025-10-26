@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useRepo } from "@/contexts/RepoContext";
+import { generateDEK, wrapDEK, unwrapDEK, base64Encode, base64Decode } from "@/lib/crypto/unified";
+import { createConfigWithDEK, isKeyWrappingConfig } from "@/lib/schema/config";
 
 type WizardStep = "welcome" | "select-directory" | "create-passphrase" | "unlock" | "complete";
 
@@ -104,18 +106,25 @@ export function useWizardSetup() {
         throw new Error(data.error || "Failed to initialize repository");
       }
 
-      // Save encrypted config with passphrase
+      // NEW: Generate DEK and wrap it with user passphrase
+      const dek = generateDEK();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const wrappedDEK = await wrapDEK(dek, passphrase, salt);
+
+      // Create new config with DEK encryption metadata
+      const config = createConfigWithDEK(
+        base64Encode(salt),
+        base64Encode(wrappedDEK),
+        300000 // PBKDF2 iterations
+      );
+
+      // Save plaintext config (no encryption needed!)
       const configResponse = await fetch("/api/config/write", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           repoPath: directoryPath,
-          passphrase: passphrase, // Used to encrypt the config
-          config: {
-            version: "1.0",
-            passphrase: passphrase, // Stored in the encrypted config
-            createdAt: new Date().toISOString(),
-          },
+          config,
         }),
       });
 
@@ -124,7 +133,11 @@ export function useWizardSetup() {
         throw new Error(data.error || "Failed to save config");
       }
 
-      setRepo(directoryPath, passphrase);
+      // Store DEK (not passphrase!) for auto-unlock
+      localStorage.setItem("holocron-dek", base64Encode(dek));
+
+      // Unlock with DEK
+      setRepo(directoryPath, base64Encode(dek));
       setStep("complete");
     } catch (err) {
       setError("Failed to initialize repository: " + (err as Error).message);
@@ -140,38 +153,50 @@ export function useWizardSetup() {
     setLoading(true);
 
     try {
-      // Try to decrypt config with the provided passphrase
+      // Read plaintext config
       const configResponse = await fetch("/api/config/read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          repoPath: directoryPath,
-          passphrase
-        }),
+        body: JSON.stringify({ repoPath: directoryPath }),
       });
 
       if (!configResponse.ok) {
         const data = await configResponse.json();
-        if (data.invalidPassphrase) {
-          setError("Invalid passphrase");
-          setLoading(false);
-          return;
-        }
         throw new Error(data.error || "Failed to read config");
       }
 
-      const { config } = await configResponse.json();
+      const { config, legacy } = await configResponse.json();
 
-      // Verify the config structure is valid
-      if (!config || !config.passphrase) {
+      // Check if legacy encrypted config
+      if (legacy) {
+        setError("Legacy config detected. Migration required - please contact support.");
+        setLoading(false);
+        return;
+      }
+
+      // Verify it's the new key wrapping config
+      if (!config || !isKeyWrappingConfig(config)) {
         setError("Invalid config structure");
         setLoading(false);
         return;
       }
 
-      // Successfully decrypted - unlock the repo
-      setRepo(directoryPath, passphrase);
-      setStep("complete");
+      // NEW: Unwrap DEK with user passphrase
+      try {
+        const salt = base64Decode(config.encryption.salt);
+        const wrappedDEK = base64Decode(config.encryption.wrappedDEK);
+        const dek = await unwrapDEK(wrappedDEK, passphrase, salt);
+
+        // Store DEK (not passphrase!) for auto-unlock
+        localStorage.setItem("holocron-dek", base64Encode(dek));
+
+        // Unlock with DEK
+        setRepo(directoryPath, base64Encode(dek));
+        setStep("complete");
+      } catch (unwrapError) {
+        setError("Invalid passphrase");
+        setLoading(false);
+      }
     } catch (err) {
       setError("Failed to unlock: " + (err as Error).message);
     } finally {

@@ -28,9 +28,9 @@ describe('useKanbanCards', () => {
     id: 'test-board',
     name: 'Test Board',
     columns: [
-      { id: 'todo', name: 'To Do', cards: [] },
-      { id: 'in-progress', name: 'In Progress', cards: [] },
-      { id: 'done', name: 'Done', cards: [] },
+      { id: 'todo', title: 'To Do', cards: [] },
+      { id: 'in-progress', title: 'In Progress', cards: [] },
+      { id: 'done', title: 'Done', cards: [] },
     ],
     createdAt: '2025-01-01T00:00:00.000Z',
     updatedAt: '2025-01-01T00:00:00.000Z',
@@ -153,7 +153,7 @@ describe('useKanbanCards', () => {
         ...mockBoard.columns.slice(0, 2),
         {
           id: 'done',
-          name: 'Done',
+          title: 'Done',
           cards: [
             createCard('Task 1', 'Description 1'),
             createCard('Task 2', 'Description 2'),
@@ -224,7 +224,7 @@ describe('useKanbanCards', () => {
         ...mockBoard.columns.slice(0, 2),
         {
           id: 'done',
-          name: 'Done',
+          title: 'Done',
           cards: [createCard('Task 1', 'Description 1')],
         },
       ],
@@ -261,7 +261,7 @@ describe('useKanbanCards', () => {
         ...mockBoard.columns.slice(0, 2),
         {
           id: 'done',
-          name: 'Done',
+          title: 'Done',
           cards: [createCard('Task 1', 'Description 1')],
         },
       ],
@@ -312,7 +312,7 @@ describe('useKanbanCards', () => {
         ...mockBoard.columns.slice(0, 2),
         {
           id: 'done',
-          name: 'Done',
+          title: 'Done',
           cards: [createCard('New Task', 'New Description')],
         },
       ],

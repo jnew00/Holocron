@@ -35,13 +35,13 @@ export async function POST(request: NextRequest) {
     const configPath = path.join(configDir, "config.json");
 
     console.log("[CONFIG WRITE] Writing to:", configPath);
-    console.log("[CONFIG WRITE] Config version:", validationResult.data.version);
+    console.log("[CONFIG WRITE] Config version:", validationResult.data?.version);
 
     // Ensure directory exists
     await fs.mkdir(configDir, { recursive: true });
 
     // Write plaintext config (much simpler!)
-    const configJson = JSON.stringify(validationResult.data, null, 2);
+    const configJson = JSON.stringify(validationResult.data!, null, 2);
     await fs.writeFile(configPath, configJson, "utf-8");
 
     console.log("[CONFIG WRITE] Successfully wrote config.json");

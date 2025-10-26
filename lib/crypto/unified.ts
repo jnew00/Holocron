@@ -422,16 +422,16 @@ export async function wrapDEK(
   const crypto = getCrypto();
 
   // Derive KEK from passphrase
-  const kek = await deriveKey(passphrase, salt);
+  const kek = await deriveKey(passphrase, salt as BufferSource);
 
   // Random IV for this encryption
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
 
   // Encrypt DEK with KEK
   const encrypted = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
+    { name: 'AES-GCM', iv: iv as BufferSource },
     kek,
-    dek
+    dek as BufferSource
   );
 
   // Return: iv + ciphertext
@@ -457,7 +457,7 @@ export async function unwrapDEK(
   salt: Uint8Array
 ): Promise<Uint8Array> {
   // Derive KEK from passphrase
-  const kek = await deriveKey(passphrase, salt);
+  const kek = await deriveKey(passphrase, salt as BufferSource);
 
   // Extract IV and ciphertext
   const iv = wrappedDEK.slice(0, IV_LENGTH);
@@ -466,13 +466,13 @@ export async function unwrapDEK(
   // Decrypt DEK with KEK
   try {
     const decrypted = await getCrypto().subtle.decrypt(
-      { name: 'AES-GCM', iv },
+      { name: 'AES-GCM', iv: iv as BufferSource },
       kek,
-      ciphertext
+      ciphertext as BufferSource
     );
     return new Uint8Array(decrypted);
   } catch {
-    throw new CryptoError('UnwrapFailed', 'Invalid passphrase');
+    throw new CryptoError('InvalidPassphrase', 'Invalid passphrase');
   }
 }
 
@@ -496,7 +496,7 @@ export async function encryptWithDEK(
   // Import DEK as AES-GCM key (no PBKDF2 needed - that's the speedup!)
   const key = await crypto.subtle.importKey(
     'raw',
-    dek,
+    dek as BufferSource,
     { name: 'AES-GCM', length: 256 },
     false,
     ['encrypt']
@@ -515,11 +515,11 @@ export async function encryptWithDEK(
   const ciphertext = await crypto.subtle.encrypt(
     {
       name: 'AES-GCM',
-      iv,
-      ...(additionalData && { additionalData }),
+      iv: iv as BufferSource,
+      ...(additionalData && { additionalData: additionalData as BufferSource }),
     },
     key,
-    plaintext
+    plaintext as BufferSource
   );
 
   // Return: iv + ciphertext (no salt needed - we use the same DEK for all files!)
@@ -550,7 +550,7 @@ export async function decryptWithDEK(
   // Import DEK as AES-GCM key
   const key = await crypto.subtle.importKey(
     'raw',
-    dek,
+    dek as BufferSource,
     { name: 'AES-GCM', length: 256 },
     false,
     ['decrypt']
@@ -566,11 +566,11 @@ export async function decryptWithDEK(
     return await crypto.subtle.decrypt(
       {
         name: 'AES-GCM',
-        iv,
-        ...(additionalData && { additionalData }),
+        iv: iv as BufferSource,
+        ...(additionalData && { additionalData: additionalData as BufferSource }),
       },
       key,
-      ciphertext
+      ciphertext as BufferSource
     );
   } catch {
     throw new CryptoError('DecryptionFailed', 'Invalid DEK or corrupted data');

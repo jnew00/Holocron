@@ -33,9 +33,9 @@ describe('useKanbanDragDrop', () => {
     id: 'test-board',
     name: 'Test Board',
     columns: [
-      { id: 'todo', name: 'To Do', cards: [card1, card2] },
-      { id: 'in-progress', name: 'In Progress', cards: [card3] },
-      { id: 'done', name: 'Done', cards: [] },
+      { id: 'todo', title: 'To Do', cards: [card1, card2] },
+      { id: 'in-progress', title: 'In Progress', cards: [card3] },
+      { id: 'done', title: 'Done', cards: [] },
     ],
     createdAt: '2025-01-01T00:00:00.000Z',
     updatedAt: '2025-01-01T00:00:00.000Z',

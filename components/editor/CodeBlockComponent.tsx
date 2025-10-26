@@ -41,7 +41,7 @@ export function CodeBlockComponent({
           codeClassName={languageClass}
           dataLanguage={dataLanguage}
         >
-          <NodeViewContent as="code" />
+          <NodeViewContent className={languageClass} />
         </CodeBlockSimple>
       </NodeViewWrapper>
     );
@@ -59,7 +59,7 @@ export function CodeBlockComponent({
         onCopy={copyToClipboard}
       />
       <pre className={cn("rounded-t-none hljs", languageClass)} data-language={dataLanguage}>
-        <NodeViewContent as="code" className={languageClass} data-language={dataLanguage} />
+        <NodeViewContent className={languageClass} data-language={dataLanguage} />
       </pre>
     </NodeViewWrapper>
   );

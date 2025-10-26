@@ -9,9 +9,9 @@ import { createRef } from 'react';
 
 describe('useKanbanMentionList', () => {
   const mockItems: KanbanMentionItem[] = [
-    { id: 'item-1', label: 'Item 1' },
-    { id: 'item-2', label: 'Item 2' },
-    { id: 'item-3', label: 'Item 3' },
+    { id: 'item-1', label: 'Item 1', description: 'Description 1', type: 'board' },
+    { id: 'item-2', label: 'Item 2', description: 'Description 2', type: 'board' },
+    { id: 'item-3', label: 'Item 3', description: 'Description 3', type: 'board' },
   ];
 
   const mockCommand = jest.fn();
@@ -176,8 +176,8 @@ describe('useKanbanMentionList', () => {
 
     // Change items
     const newItems: KanbanMentionItem[] = [
-      { id: 'new-1', label: 'New Item 1' },
-      { id: 'new-2', label: 'New Item 2' },
+      { id: 'new-1', label: 'New Item 1', description: 'Description', type: 'board' },
+      { id: 'new-2', label: 'New Item 2', description: 'Description', type: 'board' },
     ];
 
     rerender({ items: newItems });
@@ -187,7 +187,7 @@ describe('useKanbanMentionList', () => {
 
   it('should handle single item list', () => {
     const ref = createRef<any>();
-    const singleItem: KanbanMentionItem[] = [{ id: 'item-1', label: 'Item 1' }];
+    const singleItem: KanbanMentionItem[] = [{ id: 'item-1', label: 'Item 1', description: 'Description', type: 'board' }];
     const { result } = renderHook(() =>
       useKanbanMentionList({ items: singleItem, command: mockCommand, ref })
     );
@@ -273,8 +273,8 @@ describe('useKanbanMentionList', () => {
   it('should work with different item structures', () => {
     const ref = createRef<any>();
     const customItems: KanbanMentionItem[] = [
-      { id: 'board-1', label: 'Board 1', type: 'board' },
-      { id: 'card-1', label: 'Card 1', type: 'card', boardId: 'board-1' },
+      { id: 'board-1', label: 'Board 1', description: 'A board', type: 'board' },
+      { id: 'card-1', label: 'Card 1', description: 'A column', type: 'board-column' },
     ];
 
     renderHook(() =>

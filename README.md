@@ -292,7 +292,7 @@ git config user.email "your.email@example.com"
 git remote add origin git@github.com:username/my-notes.git
 
 # 5. (Optional) Set up SSH keys for remote sync
-# See GIT_SETUP.md for detailed Git configuration instructions
+
 ```
 
 ### Setup Wizard
@@ -344,8 +344,6 @@ After setup, you can configure Git synchronization:
 1. Click the Git icon in the header
 2. Commit, push, and pull from the UI
 3. (Optional) Enable auto-sync in Settings
-
-See **[GIT_SETUP.md](./GIT_SETUP.md)** for comprehensive Git configuration instructions including SSH keys, remotes, and troubleshooting.
 
 ---
 
@@ -630,20 +628,6 @@ According to `CLAUDE.md`:
    pnpm build
    ```
 
-4. **No external APIs or telemetry**
-   - Keep it local-first
-   - No tracking, no analytics
-   - User privacy is paramount
-
-### Branch Strategy
-
-| Branch | Purpose |
-|--------|---------|
-| `main` | Stable releases |
-| `dev` | Active feature integration |
-| `feature/*` | Individual features |
-
----
 
 ## 📦 Building for Production
 
@@ -672,24 +656,6 @@ pnpm start
 # Install as PWA for best experience
 ```
 
-### Portable Installation
-
-You can package Holocron for sharing:
-
-```bash
-# Clone repo
-git clone https://github.com/yourusername/holocron.git
-
-# Install and build
-cd holocron
-pnpm install
-pnpm build
-
-# Share the entire folder
-# Recipients run: pnpm start
-```
-
----
 
 ## 🤝 Contributing
 
@@ -749,23 +715,6 @@ Please follow the coding standards in `CLAUDE.md`.
 - Ensure Node.js 20+ is installed
 - Check for TypeScript errors: `pnpm tsc --noEmit`
 
----
-
-## 📄 License
-
-This project is private and not currently licensed for public use.
-
----
-
-## 🙏 Acknowledgments
-
-- **shadcn/ui** - Beautiful component library
-- **Tiptap** - Powerful rich text editor
-- **isomorphic-git** - Pure JavaScript Git implementation
-- **Next.js Team** - Amazing framework
-- **George Lucas** - For the Star Wars universe and the holocron concept
-
----
 
 ## 🌟 May the Force Be With You
 
@@ -774,7 +723,3 @@ This project is private and not currently licensed for public use.
 Keep your knowledge safe, your tasks organized, and your thoughts encrypted. The holocron is your ally in the eternal quest for productivity and wisdom.
 
 ---
-
-**Built with ❤️ and the Force**
-
-For issues, questions, or holocron wisdom, open an issue on GitHub.

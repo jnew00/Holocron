@@ -23,11 +23,12 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load repo path and passphrase from config on mount
+  // Load repo path and passphrase from localStorage on mount
   useEffect(() => {
     const loadConfig = async () => {
       setIsLoading(true);
-      const savedPath = localStorage.getItem("localnote-repo-path");
+      const savedPath = localStorage.getItem("holocron-repo-path");
+      const savedPassphrase = localStorage.getItem("holocron-passphrase");
 
       if (!savedPath) {
         // No saved path - user needs to go through setup
@@ -37,26 +38,34 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
 
       setRepoPathState(savedPath);
 
-      try {
-        // Try to load encrypted config
-        const response = await fetch(`/api/config/read?repoPath=${encodeURIComponent(savedPath)}`);
+      // If we have a saved passphrase, try to use it to unlock
+      if (savedPassphrase) {
+        try {
+          // Verify the passphrase works by trying to read the config
+          const response = await fetch("/api/config/read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              repoPath: savedPath,
+              passphrase: savedPassphrase
+            }),
+          });
 
-        if (response.ok) {
-          const { config } = await response.json();
-
-          // Auto-unlock with stored passphrase
-          if (config.passphrase) {
-            // Store as SecureString to prevent logging
-            setSecurePassphrase(SecureString.create(config.passphrase, 'passphrase'));
-            setIsUnlocked(true);
+          if (response.ok) {
+            const { config } = await response.json();
+            if (config?.passphrase) {
+              // Auto-unlock with stored passphrase
+              setSecurePassphrase(SecureString.create(savedPassphrase, 'passphrase'));
+              setIsUnlocked(true);
+            }
           }
+        } catch (error) {
+          // If config fails to load, user will need to unlock manually
+          // Don't log the error details to avoid leaking information
         }
-      } catch (error) {
-        // If config fails to load, user will need to unlock manually
-        // Don't log the error details to avoid leaking information
-      } finally {
-        setIsLoading(false);
       }
+
+      setIsLoading(false);
     };
 
     loadConfig();
@@ -64,7 +73,7 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
 
   const setRepoPath = useCallback((path: string) => {
     setRepoPathState(path);
-    localStorage.setItem("localnote-repo-path", path);
+    localStorage.setItem("holocron-repo-path", path);
   }, []);
 
   const lock = useCallback(() => {
@@ -74,13 +83,20 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
     }
     setSecurePassphrase(null);
     setIsUnlocked(false);
+
+    // Clear passphrase from localStorage
+    localStorage.removeItem("holocron-passphrase");
   }, [securePassphrase]);
 
   const setRepo = useCallback((path: string, pass: string) => {
-    // Store passphrase securely
+    // Store passphrase securely in memory
     setSecurePassphrase(SecureString.create(pass, 'passphrase'));
     setIsUnlocked(true);
     setRepoPath(path);
+
+    // Save passphrase to localStorage for auto-unlock
+    // This is acceptable for a local-only app
+    localStorage.setItem("holocron-passphrase", pass);
   }, [setRepoPath]);
 
   // Secure accessor for passphrase

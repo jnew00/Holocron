@@ -47,6 +47,8 @@ export function createTiptapExtensions({
       },
     }).configure({
       lowlight,
+      defaultLanguage: null,
+      languageClassPrefix: "language-",
     }),
     Placeholder.configure({
       placeholder,

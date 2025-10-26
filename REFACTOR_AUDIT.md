@@ -1238,7 +1238,7 @@ commit(
 | Test | Scenario | Steps | Success Criteria |
 |------|----------|-------|-----------------|
 | **Full round-trip** | Create→encrypt→push→pull→decrypt | 1. Create repo with passphrase<br>2. Create note "Test"<br>3. Commit + push<br>4. Clone to new folder<br>5. Pull + decrypt<br>6. Verify note content | Note content matches exactly |
-| **Cross-device unlock** | Encrypted config works on "new machine" | 1. Create repo on "Machine A" with passphrase "secret"<br>2. Commit `.localnote/config.json.enc`<br>3. Clone to "Machine B"<br>4. Enter passphrase "secret" → unlock | Auto-unlock works on both machines |
+| **Cross-device unlock** | Encrypted config works on "new machine" | 1. Create repo on "Machine A" with passphrase "secret"<br>2. Commit `.holocron/config.json.enc`<br>3. Clone to "Machine B"<br>4. Enter passphrase "secret" → unlock | Auto-unlock works on both machines |
 | **Wrong passphrase** | Unlock fails | 1. Existing repo<br>2. Enter wrong passphrase | Shows "Invalid passphrase" error |
 | **Git conflict** | Pull with conflict | 1. Edit note on two "machines"<br>2. Commit on both<br>3. Pull → conflict | Shows conflict UI with file list |
 | **Lock/unlock flow** | Session management | 1. Unlock<br>2. Create note<br>3. Lock<br>4. Verify note not visible<br>5. Unlock → note visible | Lock clears passphrase from memory |

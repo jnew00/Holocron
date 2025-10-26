@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create .localnote directory structure
-    const localnotePath = path.join(repoPath, ".localnote");
-    await fs.mkdir(localnotePath, { recursive: true });
+    // Create .holocron directory structure
+    const holocronPath = path.join(repoPath, ".holocron");
+    await fs.mkdir(holocronPath, { recursive: true });
 
     // Create subdirectories
     await fs.mkdir(path.join(repoPath, "notes"), { recursive: true });
@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     await fs.mkdir(path.join(repoPath, "kanban"), { recursive: true });
 
     // Create empty config file
-    const configPath = path.join(localnotePath, "config.json.enc");
+    const configPath = path.join(holocronPath, "config.json.enc");
     await fs.writeFile(configPath, JSON.stringify({
       version: "1.0",
       created: new Date().toISOString(),

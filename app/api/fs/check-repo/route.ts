@@ -13,11 +13,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if .localnote directory exists
-    const localnotePath = path.join(repoPath, ".localnote");
+    // Check if .holocron directory exists
+    const holocronPath = path.join(repoPath, ".holocron");
 
     try {
-      const stats = await fs.stat(localnotePath);
+      const stats = await fs.stat(holocronPath);
       const isValid = stats.isDirectory();
 
       return NextResponse.json({

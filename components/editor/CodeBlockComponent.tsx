@@ -6,6 +6,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { useCodeBlockCopy } from "@/hooks/useCodeBlockCopy";
 import { CodeBlockHeader } from "./CodeBlockHeader";
 import { CodeBlockSimple } from "./CodeBlockSimple";
+import { cn } from "@/lib/utils";
 
 export function CodeBlockComponent({
   node,
@@ -18,6 +19,10 @@ export function CodeBlockComponent({
 }) {
   const { copied, copyToClipboard } = useCodeBlockCopy(node.textContent);
   const { settings } = useSettings();
+  const language = typeof node.attrs.language === "string" ? node.attrs.language : null;
+  const languageClass = language ? `language-${language}` : "language-auto";
+  const dataLanguage = language ?? "auto";
+  const selectValue = language ?? "null";
 
   const handleLanguageChange = (value: string) => {
     updateAttributes({ language: value === "null" ? null : value });
@@ -25,24 +30,36 @@ export function CodeBlockComponent({
 
   if (!settings.showCodeBlockLanguageSelector) {
     return (
-      <NodeViewWrapper className="relative code-block">
-        <CodeBlockSimple copied={copied} onCopy={copyToClipboard}>
-          <NodeViewContent as="div" />
+      <NodeViewWrapper
+        className="relative code-block"
+        data-language={dataLanguage}
+      >
+        <CodeBlockSimple
+          copied={copied}
+          onCopy={copyToClipboard}
+          className={languageClass}
+          codeClassName={languageClass}
+          dataLanguage={dataLanguage}
+        >
+          <NodeViewContent as="code" />
         </CodeBlockSimple>
       </NodeViewWrapper>
     );
   }
 
   return (
-    <NodeViewWrapper className="relative code-block">
+    <NodeViewWrapper
+      className="relative code-block"
+      data-language={dataLanguage}
+    >
       <CodeBlockHeader
-        language={node.attrs.language || "null"}
+        language={selectValue}
         onLanguageChange={handleLanguageChange}
         copied={copied}
         onCopy={copyToClipboard}
       />
-      <pre className="rounded-t-none">
-        <NodeViewContent as="div" />
+      <pre className={cn("rounded-t-none hljs", languageClass)} data-language={dataLanguage}>
+        <NodeViewContent as="code" className={languageClass} data-language={dataLanguage} />
       </pre>
     </NodeViewWrapper>
   );

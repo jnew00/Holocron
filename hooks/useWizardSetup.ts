@@ -37,14 +37,18 @@ export function useWizardSetup() {
       // Store the path for Git operations
       setRepoPath(path);
 
-      // Check if it's an existing repo by checking for .localnote folder
+      // Check if it's an existing repo by checking for .holocron folder
       const checkResponse = await fetch(`/api/fs/check-repo?path=${encodeURIComponent(path)}`);
       const checkData = await checkResponse.json();
       setIsExistingRepo(checkData.isValid);
 
       if (checkData.isValid) {
         // Check if config exists (without trying to decrypt yet)
-        const configResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(path)}`);
+        const configResponse = await fetch("/api/config/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoPath: path }),
+        });
         if (configResponse.ok) {
           const { exists } = await configResponse.json();
           if (exists) {
@@ -137,9 +141,14 @@ export function useWizardSetup() {
 
     try {
       // Try to decrypt config with the provided passphrase
-      const configResponse = await fetch(
-        `/api/config/read?repoPath=${encodeURIComponent(directoryPath)}&passphrase=${encodeURIComponent(passphrase)}`
-      );
+      const configResponse = await fetch("/api/config/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repoPath: directoryPath,
+          passphrase
+        }),
+      });
 
       if (!configResponse.ok) {
         const data = await configResponse.json();

@@ -18,13 +18,11 @@ export class ConfigRepository extends BaseRepository {
    * Read config (optionally decrypt with passphrase)
    */
   async read(passphrase?: string): Promise<Config> {
-    const url = this.buildUrl("/api/config/read", {
-      repoPath: this.repoPath,
-      passphrase: passphrase || "",
-    });
-
     try {
-      const response = await this.get<{ success: boolean; config?: Config; exists?: boolean }>(url);
+      const response = await this.post<{ success: boolean; config?: Config; exists?: boolean }>("/api/config/read", {
+        repoPath: this.repoPath,
+        passphrase: passphrase || undefined,
+      });
 
       if (!response.config) {
         throw new RepositoryError(
@@ -83,12 +81,10 @@ export class ConfigRepository extends BaseRepository {
    * Check if config exists (without decrypting)
    */
   async exists(): Promise<boolean> {
-    const url = this.buildUrl("/api/config/read", {
-      repoPath: this.repoPath,
-    });
-
     try {
-      const response = await this.get<{ exists?: boolean }>(url);
+      const response = await this.post<{ exists?: boolean }>("/api/config/read", {
+        repoPath: this.repoPath,
+      });
       return response.exists === true;
     } catch (error) {
       if (error instanceof RepositoryError && error.statusCode === 404) {

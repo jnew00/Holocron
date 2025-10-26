@@ -8,8 +8,8 @@ notes/**/*.md
 !notes/**/*.md.enc
 
 # Include encrypted config (safe to commit - encrypted with machine key)
-!.localnote/config.json.enc
+!.holocron/config.json.enc
 
 # Exclude other local files
-.localnote/*
-!.localnote/config.json.enc
+.holocron/*
+!.holocron/config.json.enc

@@ -94,17 +94,14 @@
 
 /* Tiptap Editor Styles */
 .editor-content-wrapper {
-  /* Use CSS transform to scale all editor content */
-  transform: scale(var(--font-size-editor-scale, 1));
-  transform-origin: top left;
-  /* Adjust width to compensate for scaling */
-  width: calc(100% / var(--font-size-editor-scale, 1));
+  --editor-scale: var(--font-size-editor-scale, 1);
 }
 
 .ProseMirror {
   outline: none;
   font-family: var(--font-editor, ui-monospace, monospace);
   min-height: 300px;
+  font-size: calc(1rem * var(--editor-scale, 1));
 }
 
 /* Typography Styles */
@@ -162,8 +159,8 @@
 
 .ProseMirror code {
   background-color: hsl(var(--muted));
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
+  padding: 0.125em 0.25em;
+  border-radius: 0.25em;
   font-size: 0.875em;
   font-family: ui-monospace, monospace;
 }
@@ -255,7 +252,7 @@
 .ProseMirror .task-item {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.5em;
 }
 
 .ProseMirror .task-item > label {
@@ -266,8 +263,8 @@
 }
 
 .ProseMirror .task-item > label input[type="checkbox"] {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1.125em;
+  height: 1.125em;
   cursor: pointer;
 }
 
@@ -287,15 +284,15 @@
 
 .ProseMirror ul[data-type="taskList"] li > label {
   flex: 0 0 auto;
-  margin-right: 0.5rem;
+  margin-right: 0.5em;
   user-select: none;
   display: flex;
   align-items: center;
 }
 
 .ProseMirror ul[data-type="taskList"] li > label input[type="checkbox"] {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1.125em;
+  height: 1.125em;
   cursor: pointer;
 }
 
@@ -306,31 +303,27 @@
 /* Code Block Styles */
 .code-block {
   position: relative;
-  margin: 1rem 0;
-}
-
-.code-block:hover button {
-  opacity: 1 !important;
+  margin: 1em 0;
 }
 
 .ProseMirror pre {
   background: #282c34;
-  border-radius: 0.5rem;
+  border-radius: 0.5em;
   font-family: 'JetBrainsMono', 'Courier New', Courier, monospace;
-  padding: 1rem;
+  color: #d4d4d4;
+  padding: 1em;
   margin: 0;
   overflow-x: auto;
 }
 
 /* When there's a header, remove top border radius */
 .code-block > div + pre {
-  border-radius: 0 0 0.5rem 0.5rem;
+  border-radius: 0 0 0.5em 0.5em;
 }
 
 .ProseMirror pre code {
   background: transparent;
-  color: #abb2bf;
-  font-size: 0.875rem;
+  font-size: 0.875em;
   display: block;
   padding: 0;
   line-height: 1.5;
@@ -338,7 +331,7 @@
 
 /* Syntax Highlighting - Atom One Dark theme */
 .hljs {
-  color: #abb2bf;
+  color: #d4d4d4;
   background: #282c34;
   display: block;
   overflow-x: auto;
@@ -347,7 +340,7 @@
 
 .hljs-comment,
 .hljs-quote {
-  color: #5c6370;
+  color: #7f848e;
   font-style: italic;
 }
 

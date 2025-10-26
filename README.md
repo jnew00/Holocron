@@ -379,7 +379,7 @@ Understanding Holocron's two-layer architecture:
 ```
 your-notes-folder/
 ├── .git/                          # Git repository (you create this)
-├── .localnote/                    # Holocron metadata (auto-created)
+├── .holocron/                     # Holocron metadata (auto-created)
 │   └── config.json.enc           # Passphrase-encrypted config
 ├── notes/                         # PLAINTEXT notes for fast editing
 │   └── YYYY/MM/DD/
@@ -397,7 +397,7 @@ your-notes-folder/
 When you run 'git commit' and 'git push':
 
 Git commits/remote contains:
-├── .localnote/
+├── .holocron/
 │   └── config.json.enc           # Safe to commit (machine-specific encryption)
 ├── notes/
 │   └── YYYY/MM/DD/

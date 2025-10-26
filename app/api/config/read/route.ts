@@ -4,10 +4,10 @@ import * as path from "path";
 import { decryptConfig } from "@/lib/crypto/unified";
 import { validateConfig, safeParseConfig } from "@/lib/schema/config";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const repoPath = request.nextUrl.searchParams.get("repoPath");
-    const passphrase = request.nextUrl.searchParams.get("passphrase");
+    const body = await request.json();
+    const { repoPath, passphrase } = body;
 
     if (!repoPath) {
       return NextResponse.json(
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const configPath = path.join(repoPath, ".localnote", "config.json.enc");
+    const configPath = path.join(repoPath, ".holocron", "config.json.enc");
 
     try {
       // Read encrypted config

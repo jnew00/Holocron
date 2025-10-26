@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       }, { status: 422 });
     }
 
-    const configDir = path.join(repoPath, ".localnote");
+    const configDir = path.join(repoPath, ".holocron");
     const configPath = path.join(configDir, "config.json.enc");
 
     // Ensure directory exists

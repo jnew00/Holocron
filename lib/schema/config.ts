@@ -1,6 +1,6 @@
 /**
  * Zod schemas for application config validation
- * Validates structure of .localnote/config.json.enc
+ * Validates structure of .holocron/config.json.enc
  */
 
 import { z } from "zod";

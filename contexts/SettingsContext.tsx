@@ -56,7 +56,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const loadSettings = async () => {
       // Try localStorage first for backwards compatibility
-      const saved = localStorage.getItem("localnote-settings");
+      const saved = localStorage.getItem("holocron-settings");
       if (saved) {
         try {
           setSettings({ ...defaultSettings, ...JSON.parse(saved) });
@@ -67,10 +67,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Try to load from filesystem config
-      const repoPath = localStorage.getItem("localnote-repo-path");
-      if (repoPath) {
+      const repoPath = localStorage.getItem("holocron-repo-path");
+      const passphrase = localStorage.getItem("holocron-passphrase");
+
+      if (repoPath && passphrase) {
         try {
-          const response = await fetch(`/api/config/read?repoPath=${encodeURIComponent(repoPath)}`);
+          const response = await fetch("/api/config/read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ repoPath, passphrase }),
+          });
           if (response.ok) {
             const data = await response.json();
             if (data.config?.settings) {
@@ -158,15 +164,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings(updated);
 
     // Save to localStorage for backwards compatibility
-    localStorage.setItem("localnote-settings", JSON.stringify(updated));
+    localStorage.setItem("holocron-settings", JSON.stringify(updated));
 
     // Save to filesystem config
-    const repoPath = localStorage.getItem("localnote-repo-path");
-    if (repoPath) {
+    const repoPath = localStorage.getItem("holocron-repo-path");
+    const passphrase = localStorage.getItem("holocron-passphrase");
+
+    if (repoPath && passphrase) {
       try {
-        // First, read existing config
-        const readResponse = await fetch(`/api/config/read?repoPath=${encodeURIComponent(repoPath)}`);
-        let existingConfig: any = { version: "1.0" };
+        // First, read existing config WITH passphrase to decrypt it
+        const readResponse = await fetch("/api/config/read", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ repoPath, passphrase }),
+        });
+        let existingConfig: any = { version: "1.0", passphrase };
 
         if (readResponse.ok) {
           const data = await readResponse.json();
@@ -191,6 +203,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             body: JSON.stringify({
               repoPath,
               config: newConfig,
+              passphrase, // Need passphrase to encrypt the config
             }),
           });
         } else {

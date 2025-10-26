@@ -373,3 +373,204 @@ export async function decryptConfig(
  */
 export const encryptFile = encrypt;
 export const decryptFile = decrypt;
+
+/**
+ * ============================================================================
+ * KEY WRAPPING ARCHITECTURE (New - Industry Standard Pattern)
+ * ============================================================================
+ *
+ * This implements the "encrypted key" model used by password managers like
+ * 1Password and Bitwarden:
+ *
+ * - DEK (Data Encryption Key): Random 256-bit key that encrypts notes
+ * - KEK (Key Encryption Key): Derived from user passphrase, encrypts the DEK
+ * - Salt: Random value for PBKDF2, stored in plaintext config
+ *
+ * Benefits:
+ * - 10-100x faster (PBKDF2 once instead of per-file)
+ * - Simpler config (no circular dependencies)
+ * - Better security (DEK in localStorage vs passphrase)
+ */
+
+/**
+ * Generate a random 256-bit Data Encryption Key (DEK)
+ * This key is used to actually encrypt/decrypt notes
+ *
+ * @returns 32-byte random key
+ */
+export function generateDEK(): Uint8Array {
+  const crypto = getCrypto();
+  return crypto.getRandomValues(new Uint8Array(32)); // 256 bits
+}
+
+/**
+ * Wrap (encrypt) DEK with KEK derived from user passphrase
+ * This allows us to store the DEK securely in Git
+ *
+ * @param dek - The Data Encryption Key to wrap
+ * @param passphrase - User passphrase (used to derive KEK)
+ * @param salt - Random salt for PBKDF2
+ * @returns Encrypted DEK: iv(12) + ciphertext
+ */
+export async function wrapDEK(
+  dek: Uint8Array,
+  passphrase: string,
+  salt: Uint8Array
+): Promise<Uint8Array> {
+  const crypto = getCrypto();
+
+  // Derive KEK from passphrase
+  const kek = await deriveKey(passphrase, salt);
+
+  // Random IV for this encryption
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+
+  // Encrypt DEK with KEK
+  const encrypted = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    kek,
+    dek
+  );
+
+  // Return: iv + ciphertext
+  const result = new Uint8Array(IV_LENGTH + encrypted.byteLength);
+  result.set(iv, 0);
+  result.set(new Uint8Array(encrypted), IV_LENGTH);
+  return result;
+}
+
+/**
+ * Unwrap (decrypt) DEK with KEK derived from user passphrase
+ * Used when unlocking a vault with the user's passphrase
+ *
+ * @param wrappedDEK - Encrypted DEK from config
+ * @param passphrase - User passphrase (used to derive KEK)
+ * @param salt - Salt from config (for PBKDF2)
+ * @returns Decrypted DEK
+ * @throws CryptoError if passphrase is wrong
+ */
+export async function unwrapDEK(
+  wrappedDEK: Uint8Array,
+  passphrase: string,
+  salt: Uint8Array
+): Promise<Uint8Array> {
+  // Derive KEK from passphrase
+  const kek = await deriveKey(passphrase, salt);
+
+  // Extract IV and ciphertext
+  const iv = wrappedDEK.slice(0, IV_LENGTH);
+  const ciphertext = wrappedDEK.slice(IV_LENGTH);
+
+  // Decrypt DEK with KEK
+  try {
+    const decrypted = await getCrypto().subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      kek,
+      ciphertext
+    );
+    return new Uint8Array(decrypted);
+  } catch {
+    throw new CryptoError('UnwrapFailed', 'Invalid passphrase');
+  }
+}
+
+/**
+ * Encrypt data with DEK (instead of passphrase)
+ * This is much faster than encrypt() because it skips PBKDF2
+ *
+ * @param data - String or binary data to encrypt
+ * @param dek - Data Encryption Key (256-bit)
+ * @param aad - Additional Authenticated Data (e.g., file path)
+ * @returns Encrypted data: iv(12) + ciphertext (NO salt needed!)
+ */
+export async function encryptWithDEK(
+  data: string | ArrayBuffer,
+  dek: Uint8Array,
+  aad = ''
+): Promise<Uint8Array> {
+  const crypto = getCrypto();
+  const encoder = new TextEncoder();
+
+  // Import DEK as AES-GCM key (no PBKDF2 needed - that's the speedup!)
+  const key = await crypto.subtle.importKey(
+    'raw',
+    dek,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt']
+  );
+
+  // Random IV per encryption
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+
+  // Convert data to Uint8Array
+  const plaintext = typeof data === 'string'
+    ? encoder.encode(data)
+    : new Uint8Array(data);
+
+  // Encrypt with AAD binding (keeps your AAD security feature!)
+  const additionalData = aad ? encoder.encode(aad) : undefined;
+  const ciphertext = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv,
+      ...(additionalData && { additionalData }),
+    },
+    key,
+    plaintext
+  );
+
+  // Return: iv + ciphertext (no salt needed - we use the same DEK for all files!)
+  const result = new Uint8Array(IV_LENGTH + ciphertext.byteLength);
+  result.set(iv, 0);
+  result.set(new Uint8Array(ciphertext), IV_LENGTH);
+  return result;
+}
+
+/**
+ * Decrypt data with DEK
+ * Much faster than decrypt() because it skips PBKDF2
+ *
+ * @param encrypted - Encrypted data: iv(12) + ciphertext
+ * @param dek - Data Encryption Key (256-bit)
+ * @param aad - Additional Authenticated Data (must match encryption AAD)
+ * @returns Decrypted data as ArrayBuffer
+ * @throws CryptoError if decryption fails
+ */
+export async function decryptWithDEK(
+  encrypted: Uint8Array,
+  dek: Uint8Array,
+  aad = ''
+): Promise<ArrayBuffer> {
+  const crypto = getCrypto();
+  const encoder = new TextEncoder();
+
+  // Import DEK as AES-GCM key
+  const key = await crypto.subtle.importKey(
+    'raw',
+    dek,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['decrypt']
+  );
+
+  // Extract IV and ciphertext
+  const iv = encrypted.slice(0, IV_LENGTH);
+  const ciphertext = encrypted.slice(IV_LENGTH);
+
+  // Decrypt with AAD verification
+  const additionalData = aad ? encoder.encode(aad) : undefined;
+  try {
+    return await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv,
+        ...(additionalData && { additionalData }),
+      },
+      key,
+      ciphertext
+    );
+  } catch {
+    throw new CryptoError('DecryptionFailed', 'Invalid DEK or corrupted data');
+  }
+}

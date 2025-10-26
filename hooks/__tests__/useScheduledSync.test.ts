@@ -42,9 +42,11 @@ describe('useScheduledSync', () => {
     global.Date = class extends RealDate {
       constructor(...args: any[]) {
         if (args.length === 0) {
-          return mockNow as any;
+          super(mockNow.getTime());
+          return this;
         }
-        return new RealDate(...args) as any;
+        super(...(args as [value: string | number | Date]));
+        return this;
       }
 
       static now() {

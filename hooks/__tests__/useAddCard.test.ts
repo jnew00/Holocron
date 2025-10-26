@@ -10,9 +10,9 @@ describe('useAddCard', () => {
   const mockOnAddCard = jest.fn();
   const mockOnOpenChange = jest.fn();
   const mockColumns: KanbanBoard['columns'] = [
-    { id: 'todo', name: 'To Do', cards: [] },
-    { id: 'in-progress', name: 'In Progress', cards: [] },
-    { id: 'done', name: 'Done', cards: [] },
+    { id: 'todo', title: 'To Do', cards: [] },
+    { id: 'in-progress', title: 'In Progress', cards: [] },
+    { id: 'done', title: 'Done', cards: [] },
   ];
 
   beforeEach(() => {

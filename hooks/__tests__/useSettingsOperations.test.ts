@@ -28,6 +28,6 @@ describe('useSettingsOperations', () => {
     const { result } = renderHook(() => useSettingsOperations());
 
     expect(result.current.saved).toBe(false);
-    expect(result.current.dekSaved).toBe(false);
+    expect(result.current.passphraseSaved).toBe(false);
   });
 });

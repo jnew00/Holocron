@@ -25,7 +25,7 @@ export const CodeBlockSimple = React.memo(function CodeBlockSimple({
   const content = React.cloneElement(children, {
     className: cn((children.props as { className?: string }).className, codeClassName),
     "data-language": dataLanguage,
-  });
+  } as Partial<unknown>);
 
   return (
     <pre className={cn("group relative hljs", className)} data-language={dataLanguage}>

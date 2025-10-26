@@ -28,7 +28,7 @@ describe('Unified Crypto Module', () => {
 
     it('should encrypt and decrypt binary data', async () => {
       const binaryData = new TextEncoder().encode(testData);
-      const encrypted = await encrypt(binaryData, testPassphrase);
+      const encrypted = await encrypt(binaryData.buffer as ArrayBuffer, testPassphrase);
       const decrypted = await decrypt(encrypted, testPassphrase);
 
       const decryptedText = new TextDecoder().decode(decrypted);

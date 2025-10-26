@@ -7,9 +7,10 @@ interface RepoContextType {
   repoPath: string | null;
   isUnlocked: boolean;
   isLoading: boolean;
-  passphrase: string | null; // DEPRECATED: Use getPassphrase() instead
-  getPassphrase: () => string | null; // Secure accessor
-  setRepo: (path: string, passphrase: string) => void;
+  passphrase: string | null; // DEPRECATED: Use getDEK() instead
+  getPassphrase: () => string | null; // DEPRECATED: Use getDEK() instead
+  getDEK: () => string | null; // NEW: Get Data Encryption Key
+  setRepo: (path: string, dekBase64: string) => void;
   setRepoPath: (path: string) => void;
   lock: () => void;
 }
@@ -18,17 +19,17 @@ const RepoContext = createContext<RepoContextType | undefined>(undefined);
 
 export function RepoProvider({ children }: { children: React.ReactNode }) {
   const [repoPath, setRepoPathState] = useState<string | null>(null);
-  // Store passphrase as SecureString to prevent logging
-  const [securePassphrase, setSecurePassphrase] = useState<SecureString | null>(null);
+  // Store DEK as SecureString to prevent logging
+  const [secureDEK, setSecureDEK] = useState<SecureString | null>(null);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load repo path and passphrase from localStorage on mount
+  // Load repo path and DEK from localStorage on mount
   useEffect(() => {
     const loadConfig = async () => {
       setIsLoading(true);
       const savedPath = localStorage.getItem("holocron-repo-path");
-      const savedPassphrase = localStorage.getItem("holocron-passphrase");
+      const savedDEK = localStorage.getItem("holocron-dek");
 
       if (!savedPath) {
         // No saved path - user needs to go through setup
@@ -38,31 +39,11 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
 
       setRepoPathState(savedPath);
 
-      // If we have a saved passphrase, try to use it to unlock
-      if (savedPassphrase) {
-        try {
-          // Verify the passphrase works by trying to read the config
-          const response = await fetch("/api/config/read", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              repoPath: savedPath,
-              passphrase: savedPassphrase
-            }),
-          });
-
-          if (response.ok) {
-            const { config } = await response.json();
-            if (config?.passphrase) {
-              // Auto-unlock with stored passphrase
-              setSecurePassphrase(SecureString.create(savedPassphrase, 'passphrase'));
-              setIsUnlocked(true);
-            }
-          }
-        } catch (error) {
-          // If config fails to load, user will need to unlock manually
-          // Don't log the error details to avoid leaking information
-        }
+      // If we have a saved DEK, auto-unlock
+      if (savedDEK) {
+        // Store DEK securely in memory
+        setSecureDEK(SecureString.create(savedDEK, 'dek'));
+        setIsUnlocked(true);
       }
 
       setIsLoading(false);
@@ -77,32 +58,38 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const lock = useCallback(() => {
-    // Clear secure passphrase
-    if (securePassphrase) {
-      securePassphrase.clear();
+    // Clear secure DEK
+    if (secureDEK) {
+      secureDEK.clear();
     }
-    setSecurePassphrase(null);
+    setSecureDEK(null);
     setIsUnlocked(false);
 
-    // Clear passphrase from localStorage
-    localStorage.removeItem("holocron-passphrase");
-  }, [securePassphrase]);
+    // Clear DEK from localStorage
+    localStorage.removeItem("holocron-dek");
+  }, [secureDEK]);
 
-  const setRepo = useCallback((path: string, pass: string) => {
-    // Store passphrase securely in memory
-    setSecurePassphrase(SecureString.create(pass, 'passphrase'));
+  const setRepo = useCallback((path: string, dekBase64: string) => {
+    // Store DEK securely in memory
+    setSecureDEK(SecureString.create(dekBase64, 'dek'));
     setIsUnlocked(true);
     setRepoPath(path);
 
-    // Save passphrase to localStorage for auto-unlock
+    // Save DEK to localStorage for auto-unlock
     // This is acceptable for a local-only app
-    localStorage.setItem("holocron-passphrase", pass);
+    localStorage.setItem("holocron-dek", dekBase64);
   }, [setRepoPath]);
 
-  // Secure accessor for passphrase
+  // Secure accessor for DEK (NEW - replaces getPassphrase)
+  const getDEK = useCallback((): string | null => {
+    return secureDEK?.reveal() ?? null;
+  }, [secureDEK]);
+
+  // DEPRECATED: Kept for backward compatibility during migration
   const getPassphrase = useCallback((): string | null => {
-    return securePassphrase?.reveal() ?? null;
-  }, [securePassphrase]);
+    console.warn('[RepoContext] getPassphrase() is deprecated - use getDEK() instead');
+    return getDEK();
+  }, [getDEK]);
 
   return (
     <RepoContext.Provider
@@ -110,9 +97,10 @@ export function RepoProvider({ children }: { children: React.ReactNode }) {
         repoPath,
         isUnlocked,
         isLoading,
-        // DEPRECATED: Maintained for backward compatibility - use getPassphrase() instead
-        passphrase: securePassphrase?.reveal() ?? null,
-        getPassphrase,
+        // DEPRECATED: Maintained for backward compatibility - use getDEK() instead
+        passphrase: secureDEK?.reveal() ?? null,
+        getPassphrase, // DEPRECATED
+        getDEK, // NEW
         setRepo,
         setRepoPath,
         lock,

@@ -74,19 +74,30 @@ Like the balance of the Force, Holocron gives you the best of both paths—the J
   - Persistent state with auto-save
 
 ### 🔐 Security & Privacy
-- **Two-Layer Encryption Architecture**
-  - **Local storage**: Plaintext `.md` files (fast editing, no encryption overhead)
+- **🔑 Key Wrapping Architecture (v2.0)**
+  - Industry-standard encryption model (same as 1Password, Bitwarden)
+  - **DEK (Data Encryption Key)**: Random 256-bit key generated once, encrypts all notes
+  - **KEK (Key Encryption Key)**: Derived from your passphrase, encrypts the DEK
+  - **Config is plaintext**: `.holocron/config.json` contains wrapped (encrypted) DEK + settings
+  - **10-100x faster**: PBKDF2 runs once at unlock, not per-file
+  - **Cross-device sync**: Same passphrase unwraps DEK on any device (Mac, Windows, Linux)
+  - No passphrase recovery - if lost, your notes cannot be decrypted!
+
+- **📁 Two-Layer Storage Architecture**
+  - **Local storage**: Plaintext `.md` files (fast editing, zero encryption overhead)
   - **Git storage**: Encrypted `.md.enc` files (secure remote sync)
   - **Encryption boundary**: Files encrypted during `git commit`, decrypted during `git pull`
-  - **Passphrase-based encryption**: AES-256-GCM (required, minimum 8 characters)
-  - **Cross-device compatible**: Same passphrase = same encrypted config (works on Mac, Windows, Linux)
-  - **Secure config storage**: Config encrypted with your passphrase (safe to commit to Git)
-  - No recovery if passphrase is lost - store it securely!
-- **Local-First Architecture**
+  - **AES-256-GCM encryption**: Authenticated encryption with AAD (file path binding)
+  - **PBKDF2-SHA256**: 300,000 iterations for key derivation
+
+- **🛡️ Local-First & Private**
   - All data stored on your machine
   - No external APIs or telemetry
   - No cloud dependency
-  - Your plaintext files never leave your computer - only encrypted versions go to Git
+  - Plaintext notes never leave your computer - only encrypted versions go to Git
+  - Safe to commit config to Git (DEK is wrapped/encrypted, settings are not sensitive)
+
+See **[docs/ENCRYPTION_ARCHITECTURE.md](./docs/ENCRYPTION_ARCHITECTURE.md)** for full technical details.
 
 ### 🔄 Git Integration
 - **Built-in Version Control**
@@ -298,24 +309,34 @@ When you first open Holocron, you'll be guided through the Setup Wizard:
 
 **Your passphrase is critical - there is NO recovery if lost!**
 
-1. Enter a strong passphrase (minimum 8 characters)
+1. Enter a strong passphrase (minimum 8 characters recommended)
 2. Confirm your passphrase
 3. Click **"Create Repository"**
 
-**What the passphrase does:**
-- Encrypts notes when committing to Git (creates `.md.enc` files in repository)
-- Decrypts notes when pulling from Git (extracts plaintext to local disk)
-- Encrypts the `config.json.enc` file (which stores the passphrase itself)
-- You enter it once per machine/browser session for authentication
-- Works across all your devices - same passphrase everywhere
-- Cannot be recovered if forgotten - you'll lose access to all encrypted data
+**How the passphrase works (Key Wrapping Architecture):**
+- **At setup**: Generates a random 256-bit DEK (Data Encryption Key)
+- **Wrapping**: Your passphrase derives a KEK (Key Encryption Key) that encrypts the DEK
+- **Storage**: The wrapped DEK is stored in plaintext `config.json` (safe to commit!)
+- **At unlock**: Your passphrase unwraps the DEK, which then encrypts/decrypts notes
+- **Performance**: PBKDF2 runs once at unlock (not per-file) = 10-100x faster
+- **Cross-device**: Same passphrase unwraps the same DEK on all your devices
+- **No recovery**: Lost passphrase = lost DEK = cannot decrypt notes
+
+**What gets encrypted:**
+- ✅ **Notes in Git**: `.md.enc` files (encrypted with DEK before commit)
+- ✅ **Kanban boards in Git**: `.json.enc` files (encrypted with DEK before commit)
+- ✅ **DEK itself**: Wrapped/encrypted with KEK (derived from your passphrase)
+
+**What stays plaintext:**
+- ✅ **Local notes**: `.md` files on your disk (fast editing, no overhead)
+- ✅ **Config metadata**: `config.json` settings and wrapped DEK (not sensitive)
 
 **Unlocking Existing Repository:**
 
 If you're opening an existing Holocron repository:
 1. Select the folder
 2. Enter your existing passphrase
-3. Click **"Unlock"**
+3. Click **"Unlock"** (passphrase unwraps the DEK from config.json)
 
 #### Step 3: Configure Git Sync (Optional)
 
@@ -380,7 +401,10 @@ Understanding Holocron's two-layer architecture:
 your-notes-folder/
 ├── .git/                          # Git repository (you create this)
 ├── .holocron/                     # Holocron metadata (auto-created)
-│   └── config.json.enc           # Passphrase-encrypted config
+│   └── config.json               # Plaintext config (v2.0 - NEW!)
+│       ├─ encryption.salt        #   ├─ Random salt for PBKDF2
+│       ├─ encryption.wrappedDEK  #   ├─ DEK encrypted with KEK
+│       └─ settings               #   └─ UI preferences (plaintext)
 ├── notes/                         # PLAINTEXT notes for fast editing
 │   └── YYYY/MM/DD/
 │       └── note-title.md         # ← Plaintext .md, ONLY on your machine
@@ -389,7 +413,7 @@ your-notes-folder/
 └── .gitignore                    # Optional (you create this)
 ```
 
-**Key point**: Your notes are stored as regular plaintext `.md` files on your computer for fast, seamless editing with zero encryption overhead.
+**Key point**: Your notes are stored as regular plaintext `.md` files on your computer for fast, seamless editing with zero encryption overhead. The new `config.json` is also plaintext (v2.0) - it contains the wrapped DEK and settings, both safe to commit!
 
 ### In Your Git Repository
 
@@ -398,54 +422,93 @@ When you run 'git commit' and 'git push':
 
 Git commits/remote contains:
 ├── .holocron/
-│   └── config.json.enc           # Safe to commit (machine-specific encryption)
+│   └── config.json               # Safe to commit (plaintext metadata + wrapped DEK)
 ├── notes/
 │   └── YYYY/MM/DD/
-│       └── note-title.md.enc     # ← AES-256-GCM encrypted with passphrase
+│       └── note-title.md.enc     # ← AES-256-GCM encrypted with DEK
 ├── kanban/
-│   └── board-name.json.enc       # ← AES-256-GCM encrypted with passphrase
+│   └── board-name.json.enc       # ← AES-256-GCM encrypted with DEK
 ```
 
-**Key point**: When you commit, Holocron automatically encrypts your plaintext `.md` files into `.md.enc` files before they go into Git. Your plaintext notes **never leave your computer**.
+**Key point**: When you commit, Holocron automatically encrypts your plaintext `.md` files into `.md.enc` files using the DEK before they go into Git. Your plaintext notes **never leave your computer**. The `config.json` is committed as plaintext, but the DEK inside it is encrypted (wrapped) with your passphrase.
 
-### The Encryption Flow
+### The Encryption Flow (v2.0 - Key Wrapping)
+
+**At repository setup (one time):**
+```
+User Passphrase
+   → PBKDF2 (300k iterations)
+      → KEK (Key Encryption Key)
+         → Wraps (encrypts) randomly-generated DEK
+            → Wrapped DEK stored in config.json
+```
+
+**At unlock (once per session):**
+```
+User Passphrase
+   → PBKDF2 (300k iterations)
+      → KEK (Key Encryption Key)
+         → Unwraps (decrypts) DEK from config.json
+            → DEK stored in memory (SecureString)
+```
 
 **When you commit (Save to Git):**
 ```
 Local: note.md (plaintext)
-   → Encrypt with passphrase
+   → Encrypt with DEK (fast!)
       → Git: note.md.enc (encrypted)
 ```
 
 **When you pull (Load from Git):**
 ```
 Git: note.md.enc (encrypted)
-   → Decrypt with passphrase
+   → Decrypt with DEK (fast!)
       → Local: note.md (plaintext)
 ```
 
 **When you edit (Daily use):**
 ```
 Local: note.md (plaintext)
-   → No encryption
-      → Fast, seamless editing
+   → No encryption, no overhead
+      → Instant, seamless editing
 ```
 
 ### Why This Design?
 
-✅ **Fast editing** - No encryption/decryption overhead during normal use
-✅ **Secure sync** - Notes encrypted when syncing to remote Git
-✅ **Safe for public repos** - Even if your Git repo is public, notes are encrypted
-✅ **No passphrase prompts** - Stored securely in machine-encrypted config
-✅ **Cross-device sync** - Each machine decrypts incoming commits automatically
+✅ **Lightning fast** - 10-100x faster than v1.0 (PBKDF2 runs once, not per-file)
+✅ **Industry standard** - Same security model as 1Password and Bitwarden
+✅ **Fast editing** - Zero encryption overhead during daily use
+✅ **Secure sync** - Notes encrypted with DEK when syncing to Git
+✅ **Safe for public repos** - Even with public Git, notes cannot be decrypted without passphrase
+✅ **Simple config** - Config is plaintext (easier to read, modify, commit)
+✅ **Cross-device sync** - Same passphrase unwraps DEK on any machine
+✅ **No prompts** - DEK stored in memory after unlock (no repeated passphrase entry)
 
 ### Important Security Notes
 
 - **Your plaintext `.md` files only exist on your computer** - they never get committed to Git
 - **Only encrypted `.md.enc` files go into Git** - safe to push to GitHub, Bitbucket, etc.
-- **Without your passphrase**, even if someone clones your Git repository, they cannot decrypt the `.md.enc` files
-- **The `config.json.enc` is encrypted with your passphrase** - same config works on all your devices
-- **Cross-device sync works seamlessly** - pull on Mac, Windows, Linux - just enter the same passphrase
+- **Without your passphrase**, even if someone clones your Git repository, they cannot:
+  - Unwrap the DEK from `config.json`
+  - Decrypt any `.md.enc` files
+  - Access any of your notes
+- **The `config.json` is plaintext but secure**:
+  - Contains wrapped (encrypted) DEK - useless without passphrase
+  - Contains settings - just UI preferences, not sensitive
+  - Safe to commit to Git, even public repos
+- **Cross-device sync works seamlessly**:
+  - Pull on Mac, Windows, Linux - same passphrase unwraps the same DEK
+  - Each device decrypts `.md.enc` files using the unwrapped DEK
+  - Settings sync automatically (stored in plaintext config)
+
+**Security model (v2.0):**
+- 🔐 Passphrase never stored, never logged
+- 🔑 DEK wrapped with KEK (derived from passphrase via PBKDF2)
+- 📝 Notes encrypted with DEK using AES-256-GCM + AAD
+- ⚙️ Config plaintext (wrapped DEK + settings)
+- 🚀 10-100x faster than v1.0
+
+See **[docs/ENCRYPTION_ARCHITECTURE.md](./docs/ENCRYPTION_ARCHITECTURE.md)** for complete technical details, security analysis, and threat model.
 
 ---
 

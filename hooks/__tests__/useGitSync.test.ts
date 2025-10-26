@@ -22,7 +22,7 @@ describe('useGitSync', () => {
   beforeEach(() => {
     (RepoContext.useRepo as jest.Mock).mockReturnValue({
       repoPath: null,
-      passphrase: null,
+      getDEK: jest.fn(() => null),
     });
 
     (SettingsContext.useSettings as jest.Mock).mockReturnValue({

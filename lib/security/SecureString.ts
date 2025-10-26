@@ -9,9 +9,9 @@
 
 export class SecureString {
   private readonly value: string;
-  private readonly type: 'passphrase' | 'sessionKey' | 'secret';
+  private readonly type: 'passphrase' | 'sessionKey' | 'secret' | 'dek';
 
-  private constructor(value: string, type: 'passphrase' | 'sessionKey' | 'secret' = 'secret') {
+  private constructor(value: string, type: 'passphrase' | 'sessionKey' | 'secret' | 'dek' = 'secret') {
     this.value = value;
     this.type = type;
   }
@@ -19,7 +19,7 @@ export class SecureString {
   /**
    * Create a SecureString from a plain string
    */
-  static create(value: string, type: 'passphrase' | 'sessionKey' | 'secret' = 'secret'): SecureString {
+  static create(value: string, type: 'passphrase' | 'sessionKey' | 'secret' | 'dek' = 'secret'): SecureString {
     if (!value || typeof value !== 'string') {
       throw new Error('SecureString value must be a non-empty string');
     }

@@ -158,56 +158,44 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     root.style.setProperty("--font-size-editor-scale", `${settings.fontSizeEditor / 100}`);
   }, [settings.theme, settings.density, settings.accentColor, settings.uiFont, settings.editorFont, settings.fontSizeGlobal, settings.fontSizeEditor]);
 
-  // Save settings to filesystem config whenever they change
+  // Save settings to filesystem config whenever they change (NEW - MUCH SIMPLER!)
   const updateSettings = async (newSettings: Partial<Settings>) => {
     const updated = { ...settings, ...newSettings };
     setSettings(updated);
 
-    // Save to localStorage for backwards compatibility
+    // Save to localStorage for fast access
     localStorage.setItem("holocron-settings", JSON.stringify(updated));
 
-    // Save to filesystem config
+    // Save to filesystem config (plaintext - no encryption!)
     const repoPath = localStorage.getItem("holocron-repo-path");
-    const passphrase = localStorage.getItem("holocron-passphrase");
 
-    if (repoPath && passphrase) {
+    if (repoPath) {
       try {
-        // First, read existing config WITH passphrase to decrypt it
+        // Read existing config (plaintext - instant!)
         const readResponse = await fetch("/api/config/read", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ repoPath, passphrase }),
+          body: JSON.stringify({ repoPath }),
         });
-        let existingConfig: any = { version: "1.0", passphrase };
 
         if (readResponse.ok) {
-          const data = await readResponse.json();
-          existingConfig = data.config || existingConfig;
-        }
+          const { config } = await readResponse.json();
 
-        // CRITICAL: Don't save settings if we might lose the passphrase
-        if (existingConfig.passphrase) {
-          // Merge settings into config, ALWAYS preserving passphrase
-          const newConfig = {
-            ...existingConfig,
-            settings: updated,
-            updatedAt: new Date().toISOString(),
-            // Explicitly preserve passphrase (critical!)
-            passphrase: existingConfig.passphrase,
-          };
+          if (config) {
+            // Merge settings into config
+            const newConfig = {
+              ...config,
+              settings: updated,
+              updatedAt: new Date().toISOString(),
+            };
 
-          // Write updated config
-          await fetch("/api/config/write", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              repoPath,
-              config: newConfig,
-              passphrase, // Need passphrase to encrypt the config
-            }),
-          });
-        } else {
-          console.warn("[SettingsContext] Skipping config save - no passphrase in existing config, would lose it!");
+            // Write updated config (plaintext - instant!)
+            await fetch("/api/config/write", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ repoPath, config: newConfig }),
+            });
+          }
         }
       } catch (e) {
         console.error("Failed to save settings to config:", e);

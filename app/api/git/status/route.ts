@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get git status
-    const { stdout: status } = await execAsync("git status --porcelain", {
+    // Get git status (use -uall to show all untracked files, not just directories)
+    const { stdout: status } = await execAsync("git status --porcelain -uall", {
       cwd: repoPath,
     });
 

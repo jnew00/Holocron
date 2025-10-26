@@ -61,10 +61,28 @@ export async function POST(request: NextRequest) {
 
       // Add encrypted files to git
       await execAsync("git add **/*.md.enc", { cwd: repoPath });
-    }
 
-    // Stage all changes
-    await execAsync("git add -A", { cwd: repoPath });
+      // Add other safe files (config, kanban .enc, etc.) but NOT plaintext .md files
+      // Use individual commands and ignore errors if paths don't exist
+      try {
+        await execAsync("git add .holocron/", { cwd: repoPath });
+      } catch (e) {
+        // .holocron might not have changes
+      }
+      try {
+        await execAsync("git add kanban/**/*.json.enc", { cwd: repoPath });
+      } catch (e) {
+        // kanban might not exist or have .enc files
+      }
+      try {
+        await execAsync("git add README.md .gitignore", { cwd: repoPath });
+      } catch (e) {
+        // These files might not exist
+      }
+    } else {
+      // No encryption - stage all changes
+      await execAsync("git add -A", { cwd: repoPath });
+    }
 
     // Create commit with author info if provided
     let commitCmd = `git commit -m "${message.replace(/"/g, '\\"')}"`;

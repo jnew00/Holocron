@@ -5,7 +5,7 @@ interface UseAutoSyncOptions {
   enabled: boolean;
   interval: number;
   repoPath: string | null;
-  passphrase: string | null;
+  dekBase64: string | null; // NEW: Data Encryption Key (base64-encoded)
   isUnlocked: boolean;
 }
 
@@ -17,7 +17,7 @@ export function useAutoSync({
   enabled,
   interval,
   repoPath,
-  passphrase,
+  dekBase64,
   isUnlocked,
 }: UseAutoSyncOptions) {
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -31,7 +31,7 @@ export function useAutoSync({
     }
 
     // Only set up auto-sync if enabled and repo is configured
-    if (!enabled || !repoPath || !passphrase || !isUnlocked) {
+    if (!enabled || !repoPath || !dekBase64 || !isUnlocked) {
       return;
     }
 
@@ -54,7 +54,7 @@ export function useAutoSync({
         console.log("[AutoSync] Starting automatic sync...");
         await performAutoSync({
           repoPath: repoPath!,
-          passphrase: passphrase!,
+          dekBase64: dekBase64!,
           messagePrefix: "Auto-sync",
         });
       } catch (error: any) {
@@ -78,5 +78,5 @@ export function useAutoSync({
         syncTimerRef.current = null;
       }
     };
-  }, [enabled, interval, repoPath, passphrase, isUnlocked]);
+  }, [enabled, interval, repoPath, dekBase64, isUnlocked]);
 }

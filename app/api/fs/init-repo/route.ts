@@ -23,12 +23,13 @@ export async function POST(request: NextRequest) {
     await fs.mkdir(path.join(repoPath, "assets"), { recursive: true });
     await fs.mkdir(path.join(repoPath, "kanban"), { recursive: true });
 
-    // Create empty config file
-    const configPath = path.join(holocronPath, "config.json.enc");
-    await fs.writeFile(configPath, JSON.stringify({
-      version: "1.0",
-      created: new Date().toISOString(),
-    }));
+    // NOTE: We do NOT create a .gitignore for .md files
+    // In v2.0, both .md and .md.enc files can be in git
+    // The commit process will handle encryption
+    // Users can add their own .gitignore if they want different behavior
+
+    // Note: Config file is now created by the setup wizard with wrapped DEK
+    // No need to create it here - wizard will create config.json (v2.0) with encryption metadata
 
     return NextResponse.json({
       success: true,

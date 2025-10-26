@@ -2,7 +2,7 @@ import { commit, push, getStatus, getConfig } from "@/lib/git/gitService";
 
 interface PerformAutoSyncOptions {
   repoPath: string;
-  passphrase: string;
+  dekBase64: string; // NEW: Data Encryption Key (base64-encoded)
   messagePrefix?: string;
 }
 
@@ -12,7 +12,7 @@ interface PerformAutoSyncOptions {
  */
 export async function performAutoSync({
   repoPath,
-  passphrase,
+  dekBase64,
   messagePrefix = "Auto-sync",
 }: PerformAutoSyncOptions): Promise<void> {
   // Check if there are changes to sync
@@ -33,9 +33,9 @@ export async function performAutoSync({
   ];
 
   const noteTitles = allChangedFiles
-    .filter((file) => file.endsWith(".md"))
+    .filter((file) => file.endsWith(".md") || file.endsWith(".md.enc"))
     .map((file) => {
-      const fileName = file.split("/").pop()?.replace(".md", "") || "";
+      const fileName = file.split("/").pop()?.replace(/\.md(\.enc)?$/, "") || "";
       return fileName
         .split("-")
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
@@ -56,7 +56,7 @@ export async function performAutoSync({
       name: config.name,
       email: config.email,
     },
-    passphrase: passphrase,
+    dekBase64: dekBase64,
   });
 
   // Push

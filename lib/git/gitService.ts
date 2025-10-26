@@ -34,7 +34,7 @@ export interface CommitOptions {
     name: string;
     email: string;
   };
-  passphrase?: string;
+  dekBase64?: string; // NEW: Data Encryption Key (base64-encoded)
 }
 
 export interface PullResult {
@@ -177,13 +177,13 @@ export async function pull(
   repoPath: string | null,
   remote = "origin",
   branch?: string,
-  passphrase?: string
+  dekBase64?: string
 ): Promise<PullResult> {
   const path = getRepoPath(repoPath);
   const gitRepo = new GitRepository(path);
 
   try {
-    const result = await gitRepo.pull({ remote, branch, passphrase });
+    const result = await gitRepo.pull({ remote, branch, dekBase64 });
     // Adapt to PullResult format (assuming no conflicts for now)
     return {
       success: result.success,

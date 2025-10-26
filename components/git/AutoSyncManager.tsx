@@ -10,7 +10,7 @@ import { useScheduledSync } from "@/hooks/useScheduledSync";
  * This component doesn't render anything, it just manages the sync timer
  */
 export function AutoSyncManager() {
-  const { repoPath, passphrase, isUnlocked } = useRepo();
+  const { repoPath, getDEK, isUnlocked } = useRepo();
   const { settings } = useSettings();
 
   // Interval-based auto-sync
@@ -18,7 +18,7 @@ export function AutoSyncManager() {
     enabled: settings.autoSyncEnabled,
     interval: settings.autoSyncInterval,
     repoPath,
-    passphrase,
+    dekBase64: getDEK(),
     isUnlocked,
   });
 
@@ -28,7 +28,7 @@ export function AutoSyncManager() {
     scheduleTime: settings.autoSyncScheduleTime,
     scheduleDays: settings.autoSyncScheduleDays,
     repoPath,
-    passphrase,
+    dekBase64: getDEK(),
     isUnlocked,
   });
 

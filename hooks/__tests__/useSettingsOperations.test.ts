@@ -20,7 +20,7 @@ describe('useSettingsOperations', () => {
     (useRepo as jest.Mock).mockReturnValue({
       repoPath: '/test/repo',
       setRepoPath: jest.fn(),
-      passphrase: 'test-passphrase',
+      getDEK: jest.fn(() => 'dGVzdC1kZWstYmFzZTY0'),
     });
   });
 
@@ -28,6 +28,6 @@ describe('useSettingsOperations', () => {
     const { result } = renderHook(() => useSettingsOperations());
 
     expect(result.current.saved).toBe(false);
-    expect(result.current.passphraseSaved).toBe(false);
+    expect(result.current.dekSaved).toBe(false);
   });
 });

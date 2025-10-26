@@ -167,16 +167,23 @@ export function useWizardSetup() {
 
       const { config, legacy } = await configResponse.json();
 
-      // Check if legacy encrypted config
+      // Check if legacy encrypted config (.enc format from old architecture)
       if (legacy) {
-        setError("Legacy config detected. Migration required - please contact support.");
+        setError(
+          "This repository uses an old encrypted config format. " +
+          "Please create a new repository or manually migrate by deleting .holocron/config.json.enc and re-initializing."
+        );
         setLoading(false);
         return;
       }
 
-      // Verify it's the new key wrapping config
+      // Verify it's the new key wrapping config (v2.0 with DEK encryption)
       if (!config || !isKeyWrappingConfig(config)) {
-        setError("Invalid config structure");
+        setError(
+          "Invalid or outdated config structure. " +
+          "If this is an existing repository from a previous version, please re-initialize it by " +
+          "deleting the .holocron folder and setting up again."
+        );
         setLoading(false);
         return;
       }

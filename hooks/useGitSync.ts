@@ -55,7 +55,7 @@ interface UseGitSyncReturn {
 }
 
 export function useGitSync(): UseGitSyncReturn {
-  const { repoPath, passphrase } = useRepo();
+  const { repoPath, getDEK } = useRepo();
   const { settings } = useSettings();
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<GitStatus | null>(null);
@@ -98,15 +98,18 @@ export function useGitSync(): UseGitSyncReturn {
           ...gitStatus.files.added,
           ...gitStatus.files.modified,
           ...gitStatus.files.deleted,
+          ...gitStatus.files.untracked, // Include untracked files (new notes)
         ];
+
+        console.log('[useGitSync] All changed files:', allChangedFiles);
 
         if (allChangedFiles.length > 0) {
           // Extract note titles from file paths
           const noteTitles = allChangedFiles
-            .filter(file => file.endsWith('.md'))
+            .filter(file => file.endsWith('.md') || file.endsWith('.md.enc'))
             .map(file => {
-              // Extract filename without .md extension
-              const fileName = file.split('/').pop()?.replace('.md', '') || '';
+              // Extract filename without .md or .md.enc extension
+              const fileName = file.split('/').pop()?.replace(/\.md(\.enc)?$/, '') || '';
               // Convert slug to readable title
               return fileName
                 .split('-')
@@ -115,11 +118,14 @@ export function useGitSync(): UseGitSyncReturn {
             })
             .filter(Boolean);
 
+          console.log('[useGitSync] Note titles extracted:', noteTitles);
+
           if (noteTitles.length > 0) {
             const action = gitStatus.files.added.length > 0 ? 'Add' : 'Update';
             const message = noteTitles.length === 1
               ? `${action} ${noteTitles[0]}`
               : `${action} ${noteTitles.length} notes: ${noteTitles.slice(0, 3).join(', ')}${noteTitles.length > 3 ? '...' : ''}`;
+            console.log('[useGitSync] Setting commit message:', message);
             setCommitMessage(message);
           }
         }
@@ -156,7 +162,7 @@ export function useGitSync(): UseGitSyncReturn {
           name: authorName,
           email: authorEmail,
         },
-        passphrase: passphrase || undefined,
+        dekBase64: getDEK() || undefined,
       });
 
       setSuccess("Changes committed successfully");
@@ -167,7 +173,7 @@ export function useGitSync(): UseGitSyncReturn {
     } finally {
       setWorking(false);
     }
-  }, [repoPath, commitMessage, authorName, authorEmail, passphrase, checkGitStatus]);
+  }, [repoPath, commitMessage, authorName, authorEmail, getDEK, checkGitStatus]);
 
   const handlePush = useCallback(async () => {
     if (!repoPath) return;
@@ -203,7 +209,7 @@ export function useGitSync(): UseGitSyncReturn {
           name: authorName,
           email: authorEmail,
         },
-        passphrase: passphrase || undefined,
+        dekBase64: getDEK() || undefined,
       });
 
       // Step 2: Push
@@ -218,7 +224,7 @@ export function useGitSync(): UseGitSyncReturn {
     } finally {
       setWorking(false);
     }
-  }, [repoPath, commitMessage, authorName, authorEmail, passphrase, remote, checkGitStatus]);
+  }, [repoPath, commitMessage, authorName, authorEmail, getDEK, remote, checkGitStatus]);
 
   const handlePull = useCallback(async () => {
     if (!repoPath) return;
@@ -228,7 +234,7 @@ export function useGitSync(): UseGitSyncReturn {
     setSuccess(null);
 
     try {
-      const result = await pull(repoPath, remote, undefined, passphrase || undefined);
+      const result = await pull(repoPath, remote, undefined, getDEK() || undefined);
 
       if (result.hasConflicts) {
         setError(`Merge conflicts detected in ${result.conflictedFiles?.length || 0} files`);
@@ -244,7 +250,7 @@ export function useGitSync(): UseGitSyncReturn {
     } finally {
       setWorking(false);
     }
-  }, [repoPath, remote, passphrase, checkGitStatus]);
+  }, [repoPath, remote, getDEK, checkGitStatus]);
 
   const handleCreateBranch = useCallback(async () => {
     if (!repoPath || !newBranchName.trim()) return;

@@ -250,8 +250,9 @@ export class CryptoError extends Error {
 
 /**
  * Base64 encoding (browser + Node.js compatible)
+ * EXPORTED for use in key wrapping operations
  */
-function base64Encode(data: Uint8Array): string {
+export function base64Encode(data: Uint8Array): string {
   if (typeof window !== 'undefined' && typeof window.btoa === 'function') {
     // Browser - use chunking for large data to avoid stack overflow
     const CHUNK_SIZE = 8192;
@@ -269,8 +270,9 @@ function base64Encode(data: Uint8Array): string {
 
 /**
  * Base64 decoding (browser + Node.js compatible)
+ * EXPORTED for use in key wrapping operations
  */
-function base64Decode(encoded: string): Uint8Array {
+export function base64Decode(encoded: string): Uint8Array {
   if (typeof window !== 'undefined' && typeof window.atob === 'function') {
     // Browser
     return Uint8Array.from(window.atob(encoded), c => c.charCodeAt(0));

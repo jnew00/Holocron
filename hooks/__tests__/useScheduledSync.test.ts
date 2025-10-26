@@ -33,7 +33,7 @@ describe('useScheduledSync', () => {
     scheduleTime: '17:00',
     scheduleDays: [0, 1, 2, 3, 4, 5, 6], // Every day
     repoPath: '/test/repo',
-    passphrase: 'test-passphrase',
+    dekBase64: 'dGVzdC1kZWstYmFzZTY0', // 'test-dek-base64' in base64
     isUnlocked: true,
   };
 
@@ -83,11 +83,11 @@ describe('useScheduledSync', () => {
     expect(mockPerformAutoSync).not.toHaveBeenCalled();
   });
 
-  it('should not set up sync when passphrase is null', () => {
+  it('should not set up sync when dekBase64 is null', () => {
     renderHook(() =>
       useScheduledSync({
         ...defaultProps,
-        passphrase: null,
+        dekBase64: null,
       })
     );
 

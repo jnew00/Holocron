@@ -6,7 +6,7 @@ interface UseScheduledSyncOptions {
   scheduleTime: string;
   scheduleDays: number[];
   repoPath: string | null;
-  passphrase: string | null;
+  dekBase64: string | null; // NEW: Data Encryption Key (base64-encoded)
   isUnlocked: boolean;
 }
 
@@ -19,7 +19,7 @@ export function useScheduledSync({
   scheduleTime,
   scheduleDays,
   repoPath,
-  passphrase,
+  dekBase64,
   isUnlocked,
 }: UseScheduledSyncOptions) {
   const scheduleTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,7 +36,7 @@ export function useScheduledSync({
     if (
       !enabled ||
       !repoPath ||
-      !passphrase ||
+      !dekBase64 ||
       !isUnlocked ||
       scheduleDays.length === 0
     ) {
@@ -77,7 +77,7 @@ export function useScheduledSync({
       try {
         await performAutoSync({
           repoPath: repoPath!,
-          passphrase: passphrase!,
+          dekBase64: dekBase64!,
           messagePrefix: "Scheduled sync",
         });
         console.log("[AutoSync] Scheduled sync completed successfully");
@@ -99,5 +99,5 @@ export function useScheduledSync({
         scheduleTimerRef.current = null;
       }
     };
-  }, [enabled, scheduleTime, scheduleDays, repoPath, passphrase, isUnlocked]);
+  }, [enabled, scheduleTime, scheduleDays, repoPath, dekBase64, isUnlocked]);
 }

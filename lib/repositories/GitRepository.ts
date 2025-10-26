@@ -31,13 +31,13 @@ export interface CommitOptions {
     name: string;
     email: string;
   };
-  passphrase?: string;
+  dekBase64?: string; // NEW: Data Encryption Key (base64-encoded)
 }
 
 export interface PullOptions {
   remote?: string;
   branch?: string;
-  passphrase?: string;
+  dekBase64?: string; // NEW: Data Encryption Key (base64-encoded)
 }
 
 export interface PushOptions {
